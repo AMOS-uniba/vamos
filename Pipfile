@@ -4,8 +4,15 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+numpy = "*"
+scipy = "*"
+pandas = "*"
+amosutils = "*"
+astropy = "*"
 
 [dev-packages]
+pytest = "*"
+ipython = "*"
 
 [requires]
 python_version = "3.12"
