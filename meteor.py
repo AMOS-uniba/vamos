@@ -5,8 +5,12 @@ from pathlib import Path
 
 
 class Meteor:
-    def __init__(self,
-                 filename: Path):
+    """
+    A class storing a single meteor
+    """
+    @classmethod
+    def load(cls,
+             filename: Path):
         self.frames = pd.DataFrame.read_csv(filename, sep='\t')
 
-    
+

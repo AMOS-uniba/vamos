@@ -7,12 +7,14 @@ name = "pypi"
 numpy = "*"
 scipy = "*"
 pandas = "*"
-amosutils = "*"
+amosutils = {path = '/home/kvik/amos/amosutils/', editable=true}
 astropy = "*"
+matplotlib = "*"
+pyyaml = "*"
 
 [dev-packages]
 pytest = "*"
 ipython = "*"
 
 [requires]
-python_version = "3.12"
+python_version = "3.13"

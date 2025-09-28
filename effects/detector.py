@@ -1,0 +1,1 @@
+class DetectorEffect(Effect)
