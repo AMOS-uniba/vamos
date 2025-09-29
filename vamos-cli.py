@@ -38,9 +38,9 @@ class MeteorSimulatorCLI:
         self.simulate(Time(self.config.start))
 
     def simulate(self, time: Time):
-        for i in range(0, 24):
-            stime = time + i * 60 * u.s
-            scene = Scene(1600, 1200,
+        for i in range(0, 100):
+            stime = time + i * 3 * u.s
+            scene = Scene(self.config.detector.xres, self.config.detector.yres,
                           projection=self.projection,
                           scaler=self.scaler,
                           location=self.location,
@@ -55,7 +55,10 @@ class MeteorSimulatorCLI:
             ints = 100 * np.exp(-1.5 * self.catalogue.vmag(self.location, masked=True))
             scene.add_points(altaz.alt.radian, altaz.az.radian, ints)
 
+            scene.add_gaussian_noise()
+            scene.add_thermal_noise()
+
             print(f"Rendering {i:03}.png")
-            scene.render(f'{i:03}.png')
+            scene.render_raw(f'{i:03}.png')
 
 simulator = MeteorSimulatorCLI()

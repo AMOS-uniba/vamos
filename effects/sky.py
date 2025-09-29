@@ -63,7 +63,7 @@ class Sunlight(SkySource):
         brightness = -26.74 * u.mag
 
         pixels = np.stack((alt, az), axis=2)
-        dist = spherical(pixels, np.stack((sun.alt.radian, sun.az.radian), axis=0).T)
+        dist = spherical(pixels, np.stack((sun.alt.radian, sun.az.radian), axis=0))
 
         intensity = 10 * (0.8 * np.sin(sun.alt) + 0.2) if sun.alt >= 0 else 0.1 * np.exp(sun.alt.radian * 10)
 

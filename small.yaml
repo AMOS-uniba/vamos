@@ -2,8 +2,8 @@ extinction:
   airmass: 'Kasten-Young'
 
 detector:
-  xres: 1600
-  yres: 1200
+  xres: 640
+  yres: 480
   noise:
     distribution: 'normal'
     parameters:
@@ -18,10 +18,10 @@ location:
   altitude: 185
 
 pixels:
-  x0: 800
-  y0: 600
-  xs: 0.0044
-  ys: 0.0044
+  x0: 320
+  y0: 240
+  xs: 0.0144
+  ys: 0.0144
 
 start:
   "2025-10-01T20:00:00"

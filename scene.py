@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from amosutils.projections.shifters import Shifter, ScalingShifter
 from numpy.typing import ArrayLike
+from PIL import Image
 
 import astropy.units as u
 from astropy.coordinates import EarthLocation
@@ -25,7 +26,7 @@ class Scene:
                  time: Time = None):
         self.xres = xres
         self.yres = yres
-        self._data = np.zeros(shape=(yres, xres))
+        self.data = np.zeros(shape=(yres, xres))
         self.xs, self.ys = np.meshgrid(np.arange(0, xres), np.arange(0, yres))
 
         self.location = location
@@ -49,6 +50,10 @@ class Scene:
         source = Sunlight(self.location, self.time)
         airglow = Airglow(self.location, self.time, intensity=0.1)
         self.add_sky_effects([airglow])
+
+    def render_raw(self, filename = None):
+
+        Image.fromarray(np.flip(self.data * 255, axis=0).astype(np.uint8)).save(filename)
 
     def render(self, filename = None):
         """
@@ -82,18 +87,36 @@ class Scene:
             f"Coordinates and intensities have a wrong shape: {alt.shape=}, {az.shape=}, {intensities.shape=}"
 
         # Obtain coordinates in the detector coordinates
-        print(alt, az)
         mx, my = self.projection.invert(np.pi / 2 - alt, az)
-        print(mx, my)
         x, y = self.scaler.invert(mx, my)
-        print(x, y)
 
         mask = (x >= 0) & (x < self.xres) & (y >= 0) & (y < self.yres)
-        nx = np.int_(x[mask])
-        ny = np.int_(y[mask])
-        intensities = intensities[mask]
+        nx, ny = x[mask], y[mask]
+        intensities = intensities[mask] / 5
+        sigmas = np.ones_like(nx) * 0.5
+        truncate = 4.0
 
-        # Thanks to ChatGPT this sort of works
-        flat_idx = ny * self.xres + nx
-        arr_flat = np.bincount(flat_idx, weights=intensities, minlength=self.data.size)
-        self.data += arr_flat.reshape(self.data.shape)
+        # ChatGPT: Loop over deltas, but vectorized over each patch
+        for xi, yi, ai, si in zip(nx, ny, intensities, sigmas):
+            rad = int(np.ceil(truncate * si))
+            xmin, xmax = max(0, int(np.floor(xi)) - rad), min(self.xres, int(np.floor(xi)) + rad + 1)
+            ymin, ymax = max(0, int(np.floor(yi)) - rad), min(self.yres, int(np.floor(yi)) + rad + 1)
+
+            # Local patch grid
+            yy, xx = np.mgrid[ymin:ymax, xmin:xmax]
+            g = np.exp(-((xx - xi)**2 + (yy - yi)**2) / (2 * si**2))
+
+            # Normalize and scale
+            g /= g.sum()
+            g *= ai
+
+            # Add patch to result
+            self.data[ymin:ymax, xmin:xmax] += g
+
+    def add_gaussian_noise(self, sigma=0.1):
+        noise = np.random.normal(1, sigma, size=(self.yres, self.xres))
+        self.data *= noise
+
+    def add_thermal_noise(self, lam=0.1):
+        noise = np.random.poisson(lam, size=(self.yres, self.xres)) * 0.05
+        self.data += noise
