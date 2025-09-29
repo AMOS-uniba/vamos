@@ -16,7 +16,7 @@ class SkyEffect:
     """
     Effects defined in terms of angles in the sky.
     In general can be purely additive (sources, such as stars, scattered light, airglow)
-    or subtractive / dividing (clouds, obstructions).
+    or subtractive / dividing (clouds, obstructions, ...).
     """
     def __init__(self,
                  location: EarthLocation,
@@ -65,7 +65,7 @@ class Sunlight(SkySource):
         pixels = np.stack((alt, az), axis=2)
         dist = spherical(pixels, np.stack((sun.alt.radian, sun.az.radian), axis=0).T)
 
-        intensity = 10 * (0.9 * np.sin(sun.alt) + 0.1) if sun.alt >= 0 else 0.1 * np.exp(sun.alt.radian * 10)
+        intensity = 10 * (0.8 * np.sin(sun.alt) + 0.2) if sun.alt >= 0 else 0.1 * np.exp(sun.alt.radian * 10)
 
         return np.where(
             alt <= 0,

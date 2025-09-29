@@ -52,11 +52,11 @@
         },
         "astropy-iers-data": {
             "hashes": [
-                "sha256:0ae01b0b666d545fed6e810e55b152c62ea35bde742ea3c187f974162f143a3c",
-                "sha256:6808ba4531b339324deb106bce4ecde6df178bcd62e763dba22289dc6e23cb83"
+                "sha256:0a7841c9a0ff41e2abafcde984cb6b271cdfd9cb5b13e01d5ddd0ed2e8fc4065",
+                "sha256:c6988670a03a66fefe9266164194c8e5d74513efd13af47efe2829b7be4b5159"
             ],
             "markers": "python_version >= '3.8'",
-            "version": "==0.2025.9.22.0.37.25"
+            "version": "==0.2025.9.29.0.35.48"
         },
         "contourpy": {
             "hashes": [

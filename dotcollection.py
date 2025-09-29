@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.typing import ArrayLike
 
 from amosutils.projections import Projection
 
@@ -28,10 +29,8 @@ class SkyDotCollection:
         return self._az
 
     def project(self,
-                projection: Projection) -> np.ndarray[np.float64, np.float64]:
+                projection: Projection) -> ArrayLike:
         """
         Project this collection onto a canvas
         """
-
-        x, y = projection.invert(self.alt, self.az)
-
+        x, y = projection.invert(np.pi / 2 - self.alt, self.az)

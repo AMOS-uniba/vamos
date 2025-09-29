@@ -5,6 +5,7 @@ import yaml
 import numpy as np
 import matplotlib as mpl
 import dotmap
+from amosutils.projections.shifters import ScalingShifter
 
 from matplotlib import pyplot as plt
 
@@ -31,42 +32,30 @@ class MeteorSimulatorCLI:
         self.location = EarthLocation(self.config.location.longitude, self.config.location.latitude, self.config.location.altitude)
         self.catalogue = Catalogue('/home/kvik/amos/vasco/catalogues/HYG30.tsv')
         self.projection = Projection.from_dict(self.config['projection'])
+        self.scaler = ScalingShifter(x0=self.config.pixels.x0, y0=self.config.pixels.y0,
+                                     xs=self.config.pixels.xs, ys=self.config.pixels.ys)
+
+        self.simulate(Time(self.config.start))
 
     def simulate(self, time: Time):
-        dots = SkyDotCollection(
-            np.random.uniform(0, np.pi, size=20),
-            np.random.uniform(0, np.pi * 2, size=20),
-            np.random.uniform(0, 100, size=20),
-        )
+        for i in range(0, 24):
+            stime = time + i * 60 * u.s
+            scene = Scene(1600, 1200,
+                          projection=self.projection,
+                          scaler=self.scaler,
+                          location=self.location,
+                          time=stime)
 
-        for i in range(0, 600):
-            altaz = self.catalogue.altaz(self.location, time=time + i * 60 * u.s, masked=False)
+            altaz = self.catalogue.altaz(self.location, time=stime, masked=False)
             mask = altaz.alt > 0
             self.catalogue.mask = mask
             altaz = altaz[mask]
 
-            starx, stary = self.projection.invert(np.pi / 2 - altaz.alt.radian, np.pi / 2 - altaz.az.radian)
-            projected = self.projection.invert(dots.alt, dots.az)
+            scene.build()
+            ints = 100 * np.exp(-1.5 * self.catalogue.vmag(self.location, masked=True))
+            scene.add_points(altaz.alt.radian, altaz.az.radian, ints)
 
-            plt.style.use('dark_background')
-            plt.figure(figsize=(14, 10))
-            plt.ylim(-1, 1)
-            plt.xlim(-1.5, 1.5)
-            #plt.scatter(starx, -stary, s=1, c=np.exp(-self.catalogue.vmag(self.location, masked=True)), cmap='bone_r')
-            plt.scatter(starx, -stary,
-                        s=3,
-                        c=self.catalogue.vmag(self.location, masked=True),
-                        cmap='bone_r',
-                        norm=mpl.colors.Normalize(vmin=0, vmax=5))
-            plt.savefig(f'{i:03d}.png')
-            plt.close('all')
-            print(f"Plotted {i:03d}")
-
+            print(f"Rendering {i:03}.png")
+            scene.render(f'{i:03}.png')
 
 simulator = MeteorSimulatorCLI()
-
-for i in range(0, 24):
-    scene = Scene(1600, 1200, time=Time.now() + i * 3600 * u.s)
-    print(i)
-    scene.render(f'{i:03}.png')
-
