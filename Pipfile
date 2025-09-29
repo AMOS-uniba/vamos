@@ -11,6 +11,7 @@ amosutils = {path = '/home/kvik/amos/amosutils/', editable=true}
 astropy = "*"
 matplotlib = "*"
 pyyaml = "*"
+pyqt6 = "*"
 
 [dev-packages]
 pytest = "*"

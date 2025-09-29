@@ -16,6 +16,8 @@ from dotcollection import SkyDotCollection
 from amosutils.projections import Projection
 from amosutils.catalogue import Catalogue
 
+from scene import Scene
+
 
 class MeteorSimulatorCLI:
     def __init__(self):
@@ -62,11 +64,9 @@ class MeteorSimulatorCLI:
 
 
 simulator = MeteorSimulatorCLI()
-simulator.simulate(Time.now())
 
+for i in range(0, 24):
+    scene = Scene(1600, 1200, time=Time.now() + i * 3600 * u.s)
+    print(i)
+    scene.render(f'{i:03}.png')
 
-## Show wedding ring
-# Ground truth: only in case of droppers
-
-
-## Investigate how noise & compression artifacts impact the precision (x264)
