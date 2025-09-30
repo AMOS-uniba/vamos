@@ -111,9 +111,9 @@ class Scene:
         self.data += noise * profile
 
     def add_gaussian_noise(self, sigma=0.1):
-        noise = np.random.normal(1, sigma, size=(self.yres, self.xres))
+        noise = np.random.Generator.normal(1, sigma, size=(self.yres, self.xres))
         self.data *= noise
 
     def add_thermal_noise(self, lam=0.1, intensity=0.05):
-        noise = np.random.poisson(lam, size=(self.yres, self.xres)) * intensity
+        noise = np.random.Generator.poisson(lam, size=(self.yres, self.xres)) * intensity
         self.data += noise
