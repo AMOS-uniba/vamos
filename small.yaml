@@ -10,7 +10,7 @@ detector:
       sigma: 3
       mean: 10
 
-catalogue: 'HYG30'
+catalogue: '../vasco/catalogues/HYG30.tsv'
 
 location:
   latitude: 48.15
@@ -20,8 +20,8 @@ location:
 pixels:
   x0: 320
   y0: 240
-  xs: 0.0144
-  ys: 0.0144
+  xs: 0.011
+  ys: 0.011
 
 start:
   "2025-10-01T20:00:00"

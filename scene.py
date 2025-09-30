@@ -11,7 +11,7 @@ from astropy.time import Time
 
 from amosutils.projections import BorovickaProjection, Projection
 
-from effects.sky import SkySource, Sunlight, Airglow
+from effects.sky import SkySource, Sunlight, Airglow, Moonlight
 
 mpl.use('qtagg')
 
@@ -47,29 +47,15 @@ class Scene:
         self._data = new_data
 
     def build(self):
-        source = Sunlight(self.location, self.time)
-        airglow = Airglow(self.location, self.time, intensity=0.1)
-        self.add_sky_effects([airglow])
-
-    def render_raw(self, filename = None):
-
-        Image.fromarray(np.flip(self.data * 255, axis=0).astype(np.uint8)).save(filename)
+        sun = Sunlight(self.location, self.time)
+        moon = Moonlight(self.location, self.time)
+        airglow = Airglow(self.location, self.time, intensity=0.04)
+        self.add_sky_effects([sun, moon, airglow])
 
     def render(self, filename = None):
-        """
-        Render the scene into a numpy array
-        """
-        plt.figure(figsize=(16, 12))
-        plt.imshow(self.data, cmap='Grays_r', norm=mpl.colors.Normalize(vmin=0, vmax=1), origin='lower')
-        plt.tight_layout()
-        plt.title(f"{self.location} {self.time}")
-
-        if filename is not None:
-            plt.savefig(filename)
-        else:
-            plt.show()
-
-        plt.close('all')
+        print(f"Rendering {filename} {self.data.T.shape}")
+        bitmap = np.flip(self.data * 255, axis=0).astype(np.uint8)
+        Image.fromarray(bitmap).save(filename)
 
     def add_sky_effects(self,
                         sources: list[SkySource]):
@@ -97,8 +83,8 @@ class Scene:
         truncate = 4.0
 
         # ChatGPT: Loop over deltas, but vectorized over each patch
-        for xi, yi, ai, si in zip(nx, ny, intensities, sigmas):
-            rad = int(np.ceil(truncate * si))
+        for xi, yi, ii, si in zip(nx, ny, intensities, sigmas):
+            rad = int(np.ceil(truncate * si) + 1)
             xmin, xmax = max(0, int(np.floor(xi)) - rad), min(self.xres, int(np.floor(xi)) + rad + 1)
             ymin, ymax = max(0, int(np.floor(yi)) - rad), min(self.yres, int(np.floor(yi)) + rad + 1)
 
@@ -108,15 +94,26 @@ class Scene:
 
             # Normalize and scale
             g /= g.sum()
-            g *= ai
+            g *= ii
 
-            # Add patch to result
+            # Add the patch to result
             self.data[ymin:ymax, xmin:xmax] += g
+
+    def add_intensifier_noise(self,
+                              lam: float = 0.1,
+                              *,
+                              spatial_sigma: float = 50,
+                              intensity: float = 0.1,
+                              brightening: float = 0.5):
+        noise = (brightening + np.random.poisson(lam, size=(self.yres, self.xres))) * intensity
+        xc, yc = self.xres / 2, self.yres / 2
+        profile = np.exp(-((self.xs - xc)**2 + (self.ys - yc)**2) / (2 * spatial_sigma**2))
+        self.data += noise * profile
 
     def add_gaussian_noise(self, sigma=0.1):
         noise = np.random.normal(1, sigma, size=(self.yres, self.xres))
         self.data *= noise
 
-    def add_thermal_noise(self, lam=0.1):
-        noise = np.random.poisson(lam, size=(self.yres, self.xres)) * 0.05
+    def add_thermal_noise(self, lam=0.1, intensity=0.05):
+        noise = np.random.poisson(lam, size=(self.yres, self.xres)) * intensity
         self.data += noise

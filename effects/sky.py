@@ -53,6 +53,13 @@ class SkySource(SkyEffect):
         The inner function of the source, defined at (`alt`, `az`)
         """
 
+    @staticmethod
+    def path_length(alt: ArrayLike) -> ArrayLike:
+        """
+        Path length from infinity at altitude `alt`.
+        """
+        return (1 - 0.96 * np.cos(alt)) ** -0.5
+
 
 class Sunlight(SkySource):
     def func(self,
@@ -82,9 +89,11 @@ class Airglow(SkySource):
     def func(self,
              alt: ArrayLike,
              az: ArrayLike) -> ArrayLike:
+        x = self.path_length(alt)
+        extinction = 0.145
         return np.where(
             alt <= 0, 0,
-            self.intensity * np.exp(-alt * 5)
+            self.intensity * 10**(-0.4 * extinction * (x - 1)) * x,
         )
 
 
@@ -95,21 +104,18 @@ class Moonlight(SkySource):
 
     @staticmethod
     def separated(ang: ArrayLike) -> ArrayLike:
-        return 10**5.36 * (1.06 + np.cos(ang)**2) + 10**(6.15 - np.degree(ang) / 40)
+        return 10**5.36 * (1.06 + np.cos(ang)**2) + 10**(6.15 - np.degrees(ang) / 40)
 
-    @staticmethod
-    def x(alt: ArrayLike) -> ArrayLike:
-        return (1 - 0.96 * np.cos(alt))**-0.5
 
     @staticmethod
     def intensity(phase: ArrayLike) -> ArrayLike:
         return 10**(-0.4 * (3.84 + 0.026 * np.abs(np.degrees(phase)) + 4e-9 * np.degrees(phase)**4))
 
-    def brightness(self, z: ArrayLike) -> ArrayLike:
+    def brightness(self, alt: ArrayLike) -> ArrayLike:
         """
-        z: zenith distance
+        alt: altitude
         """
-        return 10**(-0.4 * self.extinction * self.x(z))
+        return 10**(-0.4 * self.extinction * self.path_length(alt))
 
     def func(self,
                  alt: ArrayLike,
@@ -118,15 +124,9 @@ class Moonlight(SkySource):
         sun = get_body('sun', self.time, self.location)
         phase = moon.separation(sun)
 
+        moon_altaz = moon.transform_to(self.altaz)
+
         pixels = np.stack((alt, az), axis=2)
-        dist = spherical(pixels, np.stack((moon.alt.radian, moon.az.radian), axis=0).T)
+        dist = spherical(pixels, np.stack((moon_altaz.alt.radian, moon_altaz.az.radian), axis=0).T)
 
-        return self.separated(dist) * self.intensity(phase) * self.brightness(np.pi / 2 - moon.alt.radian) * (1 - self.brightness(np.pi / 2 - alt))
-
-
-
-        return np.where(
-            alt <= 0,
-            brightness,
-            25 * np.cos(moon.alt) * np.sin(az / 2)
-        )
+        return self.separated(dist) * self.intensity(phase.value) * self.brightness(np.pi / 2 - moon_altaz.alt.radian) * (1 - self.brightness(np.pi / 2 - alt))

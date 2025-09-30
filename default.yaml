@@ -10,7 +10,7 @@ detector:
       sigma: 3
       mean: 10
 
-catalogue: 'HYG30'
+catalogue: '../vasco/catalogues/HYG30.tsv'
 
 location:
   latitude: 48.15

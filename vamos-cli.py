@@ -30,7 +30,7 @@ class MeteorSimulatorCLI:
         self.config = dotmap.DotMap(yaml.safe_load(self.args.config), _dynamic=False)
 
         self.location = EarthLocation(self.config.location.longitude, self.config.location.latitude, self.config.location.altitude)
-        self.catalogue = Catalogue('/home/kvik/amos/vasco/catalogues/HYG30.tsv')
+        self.catalogue = Catalogue(self.config.catalogue)
         self.projection = Projection.from_dict(self.config['projection'])
         self.scaler = ScalingShifter(x0=self.config.pixels.x0, y0=self.config.pixels.y0,
                                      xs=self.config.pixels.xs, ys=self.config.pixels.ys)
@@ -55,10 +55,11 @@ class MeteorSimulatorCLI:
             ints = 100 * np.exp(-1.5 * self.catalogue.vmag(self.location, masked=True))
             scene.add_points(altaz.alt.radian, altaz.az.radian, ints)
 
-            scene.add_gaussian_noise()
-            scene.add_thermal_noise()
+            scene.add_intensifier_noise(lam=0.1, intensity=0.25, spatial_sigma=50, brightening=0.4)
+            scene.add_gaussian_noise(sigma=0.1)
+            scene.add_thermal_noise(lam=0.1, intensity=0.1)
 
-            print(f"Rendering {i:03}.png")
-            scene.render_raw(f'{i:03}.png')
+            scene.render(f'output/{i:03}.png')
+
 
 simulator = MeteorSimulatorCLI()
