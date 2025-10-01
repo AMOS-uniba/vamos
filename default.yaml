@@ -23,8 +23,8 @@ pixels:
   xs: 0.0044
   ys: 0.0044
 
-start:
-  "2025-10-01T20:00:00"
+start: "2025-10-01T20:00:00"
+count: 30
 
 projection:
   name: 'Borovička'

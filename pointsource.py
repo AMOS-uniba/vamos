@@ -4,7 +4,6 @@ import numpy as np
 from astropy.coordinates import Angle
 from astropy.time import Time
 from astropy.units import Quantity
-from astropy.units.quantity_helper.function_helpers import interp
 from numpy.typing import ArrayLike
 
 
@@ -46,7 +45,12 @@ class PointSource:
         """
         Return positions and intensities at time, as an interpolation
         """
-        alt = interp(time, self.time, self.alt)
-        az = interp(time, self.time, self.az, period=math.tau)
-        intensity = interp(time, self.time, self.intensity, left=0, right=0)
+        time = time.jd2
+        stime = self.time.jd2
+        alt = np.interp(time, stime, self.alt)
+        az = np.interp(time, stime, self.az, period=math.tau)
+        intensity = np.interp(time, stime, self.intensity, left=0, right=0)
         return alt, az, intensity
+
+    def __str__(self):
+        return f"{self.alt=}, {self.az=}, {self.intensity=}, {self.time=}"

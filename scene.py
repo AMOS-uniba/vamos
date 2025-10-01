@@ -1,7 +1,10 @@
+from typing import Callable
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from amosutils.projections.shifters import Shifter, ScalingShifter
+from numpy._typing import NDArray
 from numpy.typing import ArrayLike
 from PIL import Image
 
@@ -47,15 +50,18 @@ class Scene:
         self._data = new_data
 
     def build(self):
+        print(f"Building a scene ({self.xres}x{self.yres}) at {self.time}")
+
         sun = Sunlight(self.location, self.time)
         moon = Moonlight(self.location, self.time)
-        airglow = Airglow(self.location, self.time, intensity=0.04)
+        airglow = Airglow(self.location, self.time, intensity=200)
         self.add_sky_effects([sun, moon, airglow])
 
     def render(self, filename = None):
-        print(f"Rendering {filename} {self.data.T.shape}")
-        bitmap = np.flip(self.data * 255, axis=0).astype(np.uint8)
-        Image.fromarray(bitmap).save(filename)
+        print(f"Rendering the scene to file {filename} {self.data.T.shape}")
+        readout = self.flux_to_electrons(lambda x: x * 10)
+        readout = np.flip(self.rescale(readout), axis=0)
+        Image.fromarray(readout).save(filename)
 
     def add_sky_effects(self,
                         sources: list[SkySource]):
@@ -100,20 +106,52 @@ class Scene:
             self.data[ymin:ymax, xmin:xmax] += g
 
     def add_intensifier_noise(self,
-                              lam: float = 0.1,
+                              rate: float = 0.1,
                               *,
-                              spatial_sigma: float = 50,
-                              intensity: float = 0.1,
-                              brightening: float = 0.5):
-        noise = (brightening + np.random.poisson(lam, size=(self.yres, self.xres))) * intensity
+                              radius: float = 50):
+        """
+        A function to simulate AMOS optical intensifier noise in the centre of field
+        """
+        noise = np.random.poisson(rate, size=(self.yres, self.xres))
         xc, yc = self.xres / 2, self.yres / 2
-        profile = np.exp(-((self.xs - xc)**2 + (self.ys - yc)**2) / (2 * spatial_sigma**2))
+        profile = np.exp(-((self.xs - xc)**2 + (self.ys - yc)**2) / (2 * radius**2))
         self.data += noise * profile
 
-    def add_gaussian_noise(self, sigma=0.1):
-        noise = np.random.Generator.normal(1, sigma, size=(self.yres, self.xres))
-        self.data *= noise
-
-    def add_thermal_noise(self, lam=0.1, intensity=0.05):
-        noise = np.random.Generator.poisson(lam, size=(self.yres, self.xres)) * intensity
+    def add_thermal_noise(self, rate=1000):
+        """
+        Add thermal noise to the entire area of the detector. Very basic, currently Poisson.
+        """
+        noise = 10 * np.random.poisson(rate, size=(self.yres, self.xres))
         self.data += noise
+
+    def render_as_poisson(self):
+        """
+        Translate intensity into Poisson noise: treat incoming light intensity as
+        the rate of a Poisson distribution and emulate shot noise.
+        """
+        self.data = np.random.poisson(self.data, size=(self.yres, self.xres)).astype(np.float64)
+
+    def flux_to_electrons(self, func: Callable[[ArrayLike], ArrayLike]) -> ArrayLike:
+        """
+        Transform physical flux into electrons or ADU.
+        """
+        return func(self.data)
+
+    @staticmethod
+    def rescale(readout: ArrayLike, max_adu: int = 65535) -> NDArray[int]:
+        """
+        Rescale the detector readout to [0, 255], in order to save to a regular bitmap.
+
+        Parameters
+        ----------
+        readout: ArrayLike
+            Final detector readout (#ToDo currently)
+        max_adu: int
+            ADU that correspond to detector saturation
+
+        Returns
+        -------
+        ArrayLike
+            A rescaled detector readout
+        """
+        return (np.clip(readout, 0, max_adu) / max_adu * 255).astype(np.uint8)

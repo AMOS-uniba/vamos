@@ -13,7 +13,7 @@ from astropy.coordinates import EarthLocation
 from astropy.time import Time
 import astropy.units as u
 
-from dotcollection import SkyDotCollection
+from pointsource import PointSource
 from amosutils.projections import Projection
 from amosutils.catalogue import Catalogue
 
@@ -35,11 +35,25 @@ class MeteorSimulatorCLI:
         self.scaler = ScalingShifter(x0=self.config.pixels.x0, y0=self.config.pixels.y0,
                                      xs=self.config.pixels.xs, ys=self.config.pixels.ys)
 
-        self.simulate(Time(self.config.start))
+
+        self.dz = 0.06
+        self.da = -1.31
+        t0 = Time(self.config.start)
+        x = np.linspace(0, 1, self.config.count + 1, endpoint=True)
+        frame = 0.05
+        t = x * self.config.count * frame
+        times = t0 + t * u.s
+        alts = 0.53 + x * self.dz
+        azs = 4.53 - x * self.da
+        ints = 2e11 * (1 - x)**5 * x**11
+
+        self.meteor = PointSource(alts, azs, ints, times)
+
+        self.simulate(t0)
 
     def simulate(self, time: Time):
-        for i in range(0, 100):
-            stime = time + i * 3 * u.s
+        for i in range(0, self.config.count):
+            stime = time + i * 0.05 * u.s
             scene = Scene(self.config.detector.xres, self.config.detector.yres,
                           projection=self.projection,
                           scaler=self.scaler,
@@ -52,12 +66,21 @@ class MeteorSimulatorCLI:
             altaz = altaz[mask]
 
             scene.build()
-            ints = 100 * np.exp(-1.5 * self.catalogue.vmag(self.location, masked=True))
+            ints = 265536 * np.exp(-0.921034 * self.catalogue.vmag(self.location, masked=True))
             scene.add_points(altaz.alt.radian, altaz.az.radian, ints)
+            alt, az, inten = self.meteor.at_time(stime)
 
-            scene.add_intensifier_noise(lam=0.1, intensity=0.25, spatial_sigma=50, brightening=0.4)
-            scene.add_gaussian_noise(sigma=0.1)
-            scene.add_thermal_noise(lam=0.1, intensity=0.1)
+            length = 0.07
+            for n in np.linspace(0, 1, 50):
+                scene.add_points(alt - length * self.dz * n, az + length * self.da * n, inten * np.exp(-30 * n**1.5))
+            #print(scene.data)
+
+            scene.add_intensifier_noise(rate=1000, radius=70)
+            #print(scene.data)
+            scene.render_as_poisson()
+            #print(scene.data)
+            scene.add_thermal_noise(rate=40)
+            #print(scene.data)
 
             scene.render(f'output/{i:03}.png')
 
