@@ -3,6 +3,7 @@ from typing import Callable
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+from amosutils.catalogue import Catalogue
 from amosutils.projections.shifters import Shifter, ScalingShifter
 from numpy._typing import NDArray
 from numpy.typing import ArrayLike
@@ -14,7 +15,8 @@ from astropy.time import Time
 
 from amosutils.projections import BorovickaProjection, Projection
 
-from effects.sky import SkySource, Sunlight, Airglow, Moonlight
+from effects.sky import SkySource, Sunlight, Airglow, Moonlight, Extinction
+from pointsource import PointSource
 
 mpl.use('qtagg')
 
@@ -26,6 +28,7 @@ class Scene:
                  projection: Projection,
                  scaler: ScalingShifter,
                  location: EarthLocation,
+                 catalogue: Catalogue,
                  time: Time = None):
         self.xres = xres
         self.yres = yres
@@ -36,6 +39,7 @@ class Scene:
         self.time = Time.now() if time is None else time
         self.projection = projection
         self.scaler = scaler
+        self.catalogue = catalogue
 
         # Pre-compute sky altitude and azimuth for every pixel in the scene
         self.alt, self.az = self.projection(*self.scaler(self.xs, self.ys))
@@ -49,13 +53,16 @@ class Scene:
     def data(self, new_data):
         self._data = new_data
 
-    def build(self):
+    def build(self, fragments: list[PointSource]):
         print(f"Building a scene ({self.xres}x{self.yres}) at {self.time}")
 
         sun = Sunlight(self.location, self.time)
         moon = Moonlight(self.location, self.time)
-        airglow = Airglow(self.location, self.time, intensity=200)
-        self.add_sky_effects([sun, moon, airglow])
+        airglow = Airglow(self.location, self.time, intensity=100)
+        extinction = Extinction(self.location, self.time)
+        self.add_stars()
+        self.add_fragments(fragments)
+        self.add_sky_effects([sun, moon, extinction, airglow])
 
     def render(self, filename = None):
         print(f"Rendering the scene to file {filename} {self.data.T.shape}")
@@ -63,10 +70,38 @@ class Scene:
         readout = np.flip(self.rescale(readout), axis=0)
         Image.fromarray(readout).save(filename)
 
+    def add_stars(self):
+        """
+        Add stars as defined by the catalogue
+        """
+        altaz = self.catalogue.altaz(self.location, self.time, masked=False)
+        mask = altaz.alt > 0
+        self.catalogue.mask = mask
+        altaz = altaz[mask]
+
+        ints = 65536 * np.exp(-0.921034 * self.catalogue.vmag(self.location, masked=True))
+        self.add_points(altaz.alt, altaz.az, ints)
+
     def add_sky_effects(self,
                         sources: list[SkySource]):
         for source in sources:
             self.data = source(self.data, self.alt, self.az)
+
+    def add_fragments(self, fragments: list[PointSource]):
+        for fragment in fragments:
+            alt, az, inten = fragment.at_time(self.time)
+            self.add_points(alt, az, inten)
+
+    @staticmethod
+    def intensity_to_sigma(intensity: ArrayLike) -> ArrayLike:
+        """
+        Obtain the Gaussian spatial profile variance as a function of brightness
+        """
+        return np.where(
+            intensity < 65536,
+            0.5,
+            np.maximum(0.5, (np.log2(intensity + 1) - 15)**3 / 40)
+        )
 
     def add_points(self,
                    alt: ArrayLike,
@@ -78,15 +113,17 @@ class Scene:
         assert alt.shape == az.shape == intensities.shape, \
             f"Coordinates and intensities have a wrong shape: {alt.shape=}, {az.shape=}, {intensities.shape=}"
 
+        alt = alt.to(u.rad).value
+        az = az.to(u.rad).value
         # Obtain coordinates in the detector coordinates
         mx, my = self.projection.invert(np.pi / 2 - alt, az)
         x, y = self.scaler.invert(mx, my)
 
         mask = (x >= 0) & (x < self.xres) & (y >= 0) & (y < self.yres)
         nx, ny = x[mask], y[mask]
-        intensities = intensities[mask] / 5
-        sigmas = np.ones_like(nx) * 0.5
-        truncate = 4.0
+        intensities = intensities[mask]
+        sigmas = self.intensity_to_sigma(intensities)
+        truncate = 5.0
 
         # ChatGPT: Loop over deltas, but vectorized over each patch
         for xi, yi, ii, si in zip(nx, ny, intensities, sigmas):
@@ -106,7 +143,8 @@ class Scene:
             self.data[ymin:ymax, xmin:xmax] += g
 
     def add_intensifier_noise(self,
-                              rate: float = 0.1,
+                              rate: float = 100,
+                              multiplier: float = 10,
                               *,
                               radius: float = 50):
         """
@@ -115,13 +153,13 @@ class Scene:
         noise = np.random.poisson(rate, size=(self.yres, self.xres))
         xc, yc = self.xres / 2, self.yres / 2
         profile = np.exp(-((self.xs - xc)**2 + (self.ys - yc)**2) / (2 * radius**2))
-        self.data += noise * profile
+        self.data += multiplier * noise * profile
 
-    def add_thermal_noise(self, rate=1000):
+    def add_thermal_noise(self, rate=40):
         """
         Add thermal noise to the entire area of the detector. Very basic, currently Poisson.
         """
-        noise = 10 * np.random.poisson(rate, size=(self.yres, self.xres))
+        noise = 20 * np.random.poisson(rate, size=(self.yres, self.xres))
         self.data += noise
 
     def render_as_poisson(self):

@@ -26,6 +26,8 @@ pixels:
 start: "2025-10-01T20:00:00"
 count: 30
 
+cores: 32
+
 projection:
   name: 'Borovička'
   parameters:

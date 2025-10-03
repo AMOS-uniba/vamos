@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 import argparse
+import os
+import time
+
 import yaml
 
 import numpy as np
-import matplotlib as mpl
 import dotmap
-from amosutils.projections.shifters import ScalingShifter
 
-from matplotlib import pyplot as plt
+from multiprocessing import Pool
 
 from astropy.coordinates import EarthLocation
 from astropy.time import Time
@@ -16,8 +17,9 @@ import astropy.units as u
 from pointsource import PointSource
 from amosutils.projections import Projection
 from amosutils.catalogue import Catalogue
+from amosutils.projections.shifters import ScalingShifter
 
-from scene import Scene
+from models.scene import Scene
 
 
 class MeteorSimulatorCLI:
@@ -29,60 +31,68 @@ class MeteorSimulatorCLI:
 
         self.config = dotmap.DotMap(yaml.safe_load(self.args.config), _dynamic=False)
 
-        self.location = EarthLocation(self.config.location.longitude, self.config.location.latitude, self.config.location.altitude)
+        self.location = EarthLocation(self.config.location.longitude,
+                                      self.config.location.latitude,
+                                      self.config.location.altitude)
         self.catalogue = Catalogue(self.config.catalogue)
         self.projection = Projection.from_dict(self.config['projection'])
         self.scaler = ScalingShifter(x0=self.config.pixels.x0, y0=self.config.pixels.y0,
                                      xs=self.config.pixels.xs, ys=self.config.pixels.ys)
 
 
-        self.dz = 0.06
-        self.da = -1.31
+        dz = 0.06 * u.rad / u.s
+        da = -0.71 * u.rad / u.s
+        length = 4 # Length of visible trail
+
         t0 = Time(self.config.start)
-        x = np.linspace(0, 1, self.config.count + 1, endpoint=True)
-        frame = 0.05
-        t = x * self.config.count * frame
-        times = t0 + t * u.s
-        alts = 0.53 + x * self.dz
-        azs = 4.53 - x * self.da
-        ints = 2e11 * (1 - x)**5 * x**11
+        dt = 0.05 * u.s
 
-        self.meteor = PointSource(alts, azs, ints, times)
+        # Dimensionless time scaled to 1
+        tau = np.linspace(0, 1, self.config.count + 1, endpoint=True)
 
-        self.simulate(t0)
+        t = tau * self.config.count * dt
+        times = t0 + t
+        alts = 14 * u.deg + t * dz
+        azs = 278 * u.deg + t * da
+        ints = 2e10 * (1 - tau)**5 * tau**11
 
-    def simulate(self, time: Time):
-        for i in range(0, self.config.count):
-            stime = time + i * 0.05 * u.s
-            scene = Scene(self.config.detector.xres, self.config.detector.yres,
-                          projection=self.projection,
-                          scaler=self.scaler,
-                          location=self.location,
-                          time=stime)
+        fragments = []
+        for fn in np.linspace(0, 1, 51, endpoint=True):
+            fragments.append(PointSource(alts - fn * dz * length * dt, azs - fn * da * length * dt, ints * np.exp(-20 * fn * 1.5), times))
 
-            altaz = self.catalogue.altaz(self.location, time=stime, masked=False)
-            mask = altaz.alt > 0
-            self.catalogue.mask = mask
-            altaz = altaz[mask]
+        fragments[0].intensity[21] *= 30
+        fragments[0].intensity[20] *= 10
 
-            scene.build()
-            ints = 265536 * np.exp(-0.921034 * self.catalogue.vmag(self.location, masked=True))
-            scene.add_points(altaz.alt.radian, altaz.az.radian, ints)
-            alt, az, inten = self.meteor.at_time(stime)
+        self.simulate(fragments, times)
 
-            length = 0.07
-            for n in np.linspace(0, 1, 50):
-                scene.add_points(alt - length * self.dz * n, az + length * self.da * n, inten * np.exp(-30 * n**1.5))
-            #print(scene.data)
+    def simulate(self, fragments, times):
+        args = [(self.config.detector.xres, self.config.detector.yres,
+                 self.projection, self.scaler,
+                 self.location, self.catalogue, fragments, i, time) for i, time in enumerate(times)]
+        pool = Pool(self.config.cores)
+        print(f"Rendering {len(fragments)} fragments at {len(times)} times")
+        pool.starmap(render, args, 1)
 
-            scene.add_intensifier_noise(rate=1000, radius=70)
-            #print(scene.data)
-            scene.render_as_poisson()
-            #print(scene.data)
-            scene.add_thermal_noise(rate=40)
-            #print(scene.data)
+def render(xres: int, yres: int,
+           projection: Projection,
+           scaler: ScalingShifter,
+           location: EarthLocation,
+           catalogue: Catalogue,
+           fragments: list[PointSource],
+           i, timestamp: Time) -> int:
 
-            scene.render(f'output/{i:03}.png')
+    np.random.seed((os.getpid() * int(time.time())) % 123456789)
+    scene = Scene(xres, yres, projection=projection, scaler=scaler, location=location, catalogue=catalogue, time=timestamp)
+
+    scene.build(fragments)
+    # print(scene.data)
+
+    scene.add_intensifier_noise(100, 10, radius=70)
+    scene.render_as_poisson()
+    scene.add_thermal_noise(rate=40)
+
+    scene.render(f'output/{i:03}.png')
+    return 1
 
 
 simulator = MeteorSimulatorCLI()

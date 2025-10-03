@@ -97,6 +97,32 @@ class Airglow(SkySource):
         )
 
 
+class Extinction(SkyEffect):
+    def __init__(self, location: EarthLocation, time: Optional[Time] = None, **kwargs):
+        super().__init__(location, time)
+        self.k = kwargs.pop('k', 0.145)
+
+    @staticmethod
+    def path_length(alt: ArrayLike) -> ArrayLike:
+        """
+        Path length from infinity at altitude `alt`.
+        """
+        u = np.sin(alt)
+        return np.where(
+            alt > 0,
+            # 1 / np.sin(alt + 244 / (165 + 47 * np.degrees(alt)**1.1)), Pickering 2002 is useless shit
+            (1.002432 * u**2 + 0.148386 * u + 0.0096467) / (u**3 + 0.149846 * u**2 + 0.0102963 * u + 0.000303978),
+            1000
+        )
+
+    def __call__(self,
+                 data: ArrayLike,
+                 alt: ArrayLike,
+                 az: ArrayLike) -> ArrayLike:
+        x = self.path_length(alt)
+        return data * 10**(-0.4 * self.k * x)
+
+
 class Moonlight(SkySource):
     def __init__(self, location: EarthLocation, time: Optional[Time] = None, **kwargs):
         super().__init__(location, time)

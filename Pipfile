@@ -12,6 +12,7 @@ astropy = "*"
 matplotlib = "*"
 pyyaml = "*"
 pyqt6 = "*"
+cupy = "*"
 
 [dev-packages]
 pytest = "*"

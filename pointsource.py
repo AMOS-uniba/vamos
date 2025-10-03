@@ -54,3 +54,6 @@ class PointSource:
 
     def __str__(self):
         return f"{self.alt=}, {self.az=}, {self.intensity=}, {self.time=}"
+
+    def __repr__(self):
+        return self.__str__()
