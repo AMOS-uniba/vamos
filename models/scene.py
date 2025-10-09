@@ -1,11 +1,9 @@
 from typing import Callable
 
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 from amosutils.catalogue import Catalogue
-from amosutils.projections.shifters import Shifter, ScalingShifter
-from numpy._typing import NDArray
+from amosutils.projections.shifters import ScalingShifter
 from numpy.typing import ArrayLike
 from PIL import Image
 
@@ -18,10 +16,13 @@ from amosutils.projections import BorovickaProjection, Projection
 from effects.sky import SkySource, Sunlight, Airglow, Moonlight, Extinction
 from pointsource import PointSource
 
-mpl.use('qtagg')
+u.Wm2 = u.W / u.m**2
+u.ms = u.m / u.s
 
 
 class Scene:
+    gain = 1e13 / u.Wm2
+
     def __init__(self,
                  xres: int,
                  yres: int,
@@ -79,7 +80,7 @@ class Scene:
         self.catalogue.mask = mask
         altaz = altaz[mask]
 
-        ints = 65536 * np.exp(-0.921034 * self.catalogue.vmag(self.location, masked=True))
+        ints = np.exp(-0.921034 * (self.catalogue.vmag(self.location, masked=True) + 19.89)) * u.W / u.m ** 2
         self.add_points(altaz.alt, altaz.az, ints)
 
     def add_sky_effects(self,
@@ -93,14 +94,14 @@ class Scene:
             self.add_points(alt, az, inten)
 
     @staticmethod
-    def intensity_to_sigma(intensity: ArrayLike) -> ArrayLike:
+    def intensity_to_sigma(intensity: u.Quantity) -> ArrayLike:
         """
         Obtain the Gaussian spatial profile variance as a function of brightness
         """
         return np.where(
-            intensity < 65536,
+            intensity < 1e-12 * u.Wm2,
             0.5,
-            np.maximum(0.5, (np.log2(intensity + 1) - 15)**3 / 40)
+            np.maximum(0.5, (np.log2(intensity / u.Wm2) + 27)**3 / 40)
         )
 
     def add_points(self,
@@ -137,7 +138,7 @@ class Scene:
 
             # Normalize and scale
             g /= g.sum()
-            g *= ii
+            g *= self.gain * ii
 
             # Add the patch to result
             self.data[ymin:ymax, xmin:xmax] += g
@@ -176,7 +177,7 @@ class Scene:
         return func(self.data)
 
     @staticmethod
-    def rescale(readout: ArrayLike, max_adu: int = 65535) -> NDArray[int]:
+    def rescale(readout: ArrayLike, max_adu: int = 65535) -> ArrayLike:
         """
         Rescale the detector readout to [0, 255], in order to save to a regular bitmap.
 

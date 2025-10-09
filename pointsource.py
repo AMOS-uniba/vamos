@@ -4,7 +4,6 @@ import numpy as np
 from astropy.coordinates import Angle
 from astropy.time import Time
 from astropy.units import Quantity
-from numpy.typing import ArrayLike
 
 
 class PointSource:

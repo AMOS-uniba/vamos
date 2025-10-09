@@ -1,0 +1,56 @@
+import numpy as np
+
+import astropy.units as u
+from astropy.coordinates import EarthLocation, CartesianRepresentation, CartesianDifferential
+from astropy.time import Time
+from astropy.units import Quantity
+
+from pointsource import PointSource
+
+
+class Meteor:
+    def __init__(self,
+                 initial_time: Time,
+                 initial_mass: u.Quantity[u.kg],
+                 initial_position: EarthLocation,
+                 initial_velocity: CartesianDifferential):
+        self.time: Time = initial_time
+        self.mass: u.Quantity[u.kg] = initial_mass
+        self.position: EarthLocation = initial_position
+        self.velocity: CartesianDifferential = initial_velocity
+        self.brightness: u.Quantity[u.watt] = 0 * u.watt
+
+    def simulate(self,
+                 steps: int,
+                 dt: u.Quantity[u.s]):
+        n = 0
+        pos = [self.position]
+        vel = [self.velocity]
+
+        while n < steps:
+            cp = CartesianRepresentation(pos[-1].to_geocentric())
+            cv = vel[-1]
+            newpos = cp + cv * dt
+            pos.append(EarthLocation.from_geocentric(newpos.x, newpos.y, newpos.z))
+            vel.append(cv)
+
+            n += 1
+
+        self.position = EarthLocation.from_geocentric(
+            u.Quantity([p.x for p in pos]),
+            u.Quantity([p.y for p in pos]),
+            u.Quantity([p.z for p in pos]),
+        )
+        self.velocity = CartesianDifferential(
+            u.Quantity([v.d_x for v in vel]),
+            u.Quantity([v.d_y for v in vel]),
+            u.Quantity([v.d_z for v in vel]),
+        )
+        self.time = Time(
+            self.time + np.arange(0, len(self.position)) * dt,
+        )
+        tau = np.linspace(0, 1, steps + 1)
+        self.brightness = 1e6 * u.W * (1 - tau)**3 * tau**5
+        print(f"Geodetic position: {self.position.to_geodetic()}")
+        print(f"Absolute brightness: {self.brightness}")
+        #self.brightness = 1e6 * u.W * np.exp(- self.position.height / u.km / 10)

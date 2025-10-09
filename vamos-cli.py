@@ -10,16 +10,21 @@ import dotmap
 
 from multiprocessing import Pool
 
-from astropy.coordinates import EarthLocation
+from astropy.coordinates import EarthLocation, CartesianDifferential
 from astropy.time import Time
 import astropy.units as u
 
+from models.meteor import Meteor
+from models.observer import Observer
 from pointsource import PointSource
 from amosutils.projections import Projection
 from amosutils.catalogue import Catalogue
 from amosutils.projections.shifters import ScalingShifter
 
 from models.scene import Scene
+
+
+np.set_printoptions(edgeitems=100)
 
 
 class MeteorSimulatorCLI:
@@ -39,31 +44,19 @@ class MeteorSimulatorCLI:
         self.scaler = ScalingShifter(x0=self.config.pixels.x0, y0=self.config.pixels.y0,
                                      xs=self.config.pixels.xs, ys=self.config.pixels.ys)
 
-
-        dz = 0.06 * u.rad / u.s
-        da = -0.71 * u.rad / u.s
-        length = 4 # Length of visible trail
-
         t0 = Time(self.config.start)
         dt = 0.05 * u.s
+        times = t0 + np.arange(0, self.config.count) * dt
 
-        # Dimensionless time scaled to 1
-        tau = np.linspace(0, 1, self.config.count + 1, endpoint=True)
+        m = Meteor(t0, 1 * u.kg,
+                   EarthLocation.from_geodetic(lat=49 * u.deg, lon=18 * u.deg, height=101 * u.km),
+                   CartesianDifferential(15800 * u.m / u.s, -43000 * u.m / u.s, -16750 * u.m / u.s))
 
-        t = tau * self.config.count * dt
-        times = t0 + t
-        alts = 14 * u.deg + t * dz
-        azs = 278 * u.deg + t * da
-        ints = 2e10 * (1 - tau)**5 * tau**11
+        m.simulate(self.config.count, dt)
 
-        fragments = []
-        for fn in np.linspace(0, 1, 51, endpoint=True):
-            fragments.append(PointSource(alts - fn * dz * length * dt, azs - fn * da * length * dt, ints * np.exp(-20 * fn * 1.5), times))
-
-        fragments[0].intensity[21] *= 30
-        fragments[0].intensity[20] *= 10
-
-        self.simulate(fragments, times)
+        o = Observer(self.location)
+        ps = o.observe(m)
+        self.simulate([ps], times)
 
     def simulate(self, fragments, times):
         args = [(self.config.detector.xres, self.config.detector.yres,
@@ -73,6 +66,7 @@ class MeteorSimulatorCLI:
         print(f"Rendering {len(fragments)} fragments at {len(times)} times")
         pool.starmap(render, args, 1)
 
+
 def render(xres: int, yres: int,
            projection: Projection,
            scaler: ScalingShifter,
@@ -81,14 +75,14 @@ def render(xres: int, yres: int,
            fragments: list[PointSource],
            i, timestamp: Time) -> int:
 
+    # This is needed so that noise is not generated using the same seed across workers
     np.random.seed((os.getpid() * int(time.time())) % 123456789)
+
     scene = Scene(xres, yres, projection=projection, scaler=scaler, location=location, catalogue=catalogue, time=timestamp)
-
     scene.build(fragments)
-    # print(scene.data)
 
-    scene.add_intensifier_noise(100, 10, radius=70)
     scene.render_as_poisson()
+    scene.add_intensifier_noise(100, 10, radius=70)
     scene.add_thermal_noise(rate=40)
 
     scene.render(f'output/{i:03}.png')
