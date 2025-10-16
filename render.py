@@ -2,20 +2,17 @@
 import argparse
 import os
 import time
-
-import yaml
+from typing import Optional
 
 import numpy as np
-import dotmap
 
 from multiprocessing import Pool
 
 from astropy.coordinates import EarthLocation, CartesianDifferential
 from astropy.time import Time
-import astropy.units as u
 
-from models.meteor import Meteor
-from models.observer import Observer
+from scalyca import Scalyca
+
 from pointsource import PointSource
 from amosutils.projections import Projection
 from amosutils.catalogue import Catalogue
@@ -27,15 +24,18 @@ from models.scene import Scene
 np.set_printoptions(edgeitems=100)
 
 
-class MeteorSimulatorCLI:
-    def __init__(self):
-        self.parser = argparse.ArgumentParser()
-        self.parser.add_argument('--meteor-file', '-m')
-        self.parser.add_argument('config', type=argparse.FileType('r'))
-        self.args = self.parser.parse_args()
+class MeteorRenderer(Scalyca):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.location: Optional[EarthLocation] = None
+        self.catalogue: Optional[Catalogue] = None
+        self.projection: Optional[Projection] = None
+        self.scaler = None
 
-        self.config = dotmap.DotMap(yaml.safe_load(self.args.config), _dynamic=False)
+    def add_arguments(self):
+        self.add_argument('--meteor-file', '-m', argparse.FileType('r'))
 
+    def initialize(self):
         self.location = EarthLocation(self.config.location.longitude,
                                       self.config.location.latitude,
                                       self.config.location.altitude)
@@ -44,21 +44,7 @@ class MeteorSimulatorCLI:
         self.scaler = ScalingShifter(x0=self.config.pixels.x0, y0=self.config.pixels.y0,
                                      xs=self.config.pixels.xs, ys=self.config.pixels.ys)
 
-        t0 = Time(self.config.start)
-        dt = 0.05 * u.s
-        times = t0 + np.arange(0, self.config.count) * dt
-
-        m = Meteor(t0, 1 * u.kg,
-                   EarthLocation.from_geodetic(lat=49 * u.deg, lon=18 * u.deg, height=101 * u.km),
-                   CartesianDifferential(15800 * u.m / u.s, -43000 * u.m / u.s, -16750 * u.m / u.s))
-
-        m.simulate(self.config.count, dt)
-
-        o = Observer(self.location)
-        ps = o.observe(m)
-        self.simulate([ps], times)
-
-    def simulate(self, fragments, times):
+    def main(self):
         args = [(self.config.detector.xres, self.config.detector.yres,
                  self.projection, self.scaler,
                  self.location, self.catalogue, fragments, i, time) for i, time in enumerate(times)]
@@ -89,4 +75,4 @@ def render(xres: int, yres: int,
     return 1
 
 
-simulator = MeteorSimulatorCLI()
+simulator = MeteorRenderer().run()

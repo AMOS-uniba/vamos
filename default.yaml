@@ -1,46 +1,10 @@
 extinction:
   airmass: 'Kasten-Young'
 
-detector:
-  xres: 1600
-  yres: 1200
-  noise:
-    distribution: 'normal'
-    parameters:
-      sigma: 3
-      mean: 10
+
 
 catalogue: '../vasco/catalogues/HYG30.tsv'
 
-amos:
-  ago: &ago
-    latitude: 48.372763
-    longitude: 17.373933
-    altitude: 580
-  arbo: &arbo
-    latitude: 48.323447
-    longitude: 18.368468
-    altitude: 244
-  knm: &knm
-    latitude: 49.307336
-    longitude: 18.765383
-    altitude: 460
-  vaz: &vaz
-    latitude: 49.054427
-    longitude: 19.989889
-    altitude: 855
-  sc: &sc
-    latitude: 48.220210
-    longitude: 17.395120
-    altitude: 181
-
-location: *arbo
-
-pixels:
-  x0: 800
-  y0: 600
-  xs: 0.0044
-  ys: 0.0044
 
 start: "2025-10-01T20:00:00"
 count: 50

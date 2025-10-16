@@ -1,6 +1,10 @@
+import itertools
+from typing import TextIO
+
 import numpy as np
 
 import astropy.units as u
+import yaml
 from astropy.coordinates import EarthLocation, CartesianRepresentation, CartesianDifferential
 from astropy.time import Time
 from astropy.units import Quantity
@@ -50,7 +54,35 @@ class Meteor:
             self.time + np.arange(0, len(self.position)) * dt,
         )
         tau = np.linspace(0, 1, steps + 1)
-        self.brightness = 1e6 * u.W * (1 - tau)**3 * tau**5
-        print(f"Geodetic position: {self.position.to_geodetic()}")
-        print(f"Absolute brightness: {self.brightness}")
+        #self.brightness = 1e6 * u.W * (1 - tau)**3 * tau**5
+        self.brightness = 1e4 * u.W * np.ones_like(tau)
         #self.brightness = 1e6 * u.W * np.exp(- self.position.height / u.km / 10)
+
+    def as_dict(self):
+        """
+        Returns a dictionary representation of the meteor, suitable for saving.
+        """
+        return {
+            index: {
+                'time': time.iso,
+                'pos': {
+                    'lat': float(position.lat.value),
+                    'lon': float(position.lon.value),
+                    'alt': float(position.height.to(u.m).value),
+                },
+                'vel': {
+                    'vx': float(velocity.d_x.value),
+                    'vy': float(velocity.d_y.value),
+                    'vz': float(velocity.d_z.value),
+                },
+                'i': float(brightness.to(u.W).value),
+            }
+            for index, time, position, velocity, brightness in
+            zip(itertools.count(), self.time, self.position, self.velocity, self.brightness)
+        }
+
+    def dump_yaml(self, filename: TextIO):
+        """
+        Dumps the meteor to a YAML file.
+        """
+        yaml.safe_dump(self.as_dict(), filename)

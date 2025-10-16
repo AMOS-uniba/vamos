@@ -11,12 +11,11 @@ amosutils = {path = '/home/kvik/amos/amosutils/', editable=true}
 astropy = "*"
 matplotlib = "*"
 pyyaml = "*"
-pyqt6 = "*"
-cupy = "*"
+scalyca = {path = '/home/kvik/python/scalyca/', editable=true}
 
 [dev-packages]
 pytest = "*"
 ipython = "*"
 
 [requires]
-python_version = "3.14"
+python_version = "3.13"

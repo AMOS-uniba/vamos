@@ -1,6 +1,11 @@
+import itertools
 import math
+from typing import TextIO
+
 import numpy as np
 
+import astropy.units as u
+import yaml
 from astropy.coordinates import Angle
 from astropy.time import Time
 from astropy.units import Quantity
@@ -8,13 +13,17 @@ from astropy.units import Quantity
 
 class PointSource:
     """
-    A collection of point light sources in the sky, in the alt-az system.
+    A point source moving in the sky, defined as the brightness
+    of the source in the alt-az system at a specified time, I(alt, az, t)
+    as a sequence of positions, times and brightnesses.
+    Can be interpolated to any specified time,
+    or extrapolated (in which case the brightness is assumed to be zero).
     """
 
     def __init__(self,
-                 alt: Angle,
-                 az: Angle,
-                 intensity: Quantity,
+                 alt: Angle,            # Angle
+                 az: Angle,             # Angle
+                 intensity: Quantity,   # Watt per square metre
                  time: Time):
         assert alt.shape == az.shape == intensity.shape == time.shape, \
             f"Shapes do not match: {alt.shape=}, {az.shape=}, {intensity.shape=}, {time.shape=}"
@@ -23,6 +32,8 @@ class PointSource:
         self._az = az
         self._intensity = intensity
         self._time = time
+
+        assert self._intensity.unit.is_equivalent(u.W / u.m**2)
 
     @property
     def alt(self):
@@ -42,7 +53,7 @@ class PointSource:
 
     def at_time(self, time: Time) -> tuple[Angle, Angle, Quantity]:
         """
-        Return positions and intensities at time, as an interpolation
+        Return positions and intensities at time, as an (inter|extra)polation.
         """
         time = time.jd2
         stime = self.time.jd2
@@ -56,3 +67,17 @@ class PointSource:
 
     def __repr__(self):
         return self.__str__()
+
+    def as_dict(self):
+        return {
+            index: {
+                'time': time.iso,
+                'alt': float(alt.to(u.deg).value),
+                'az': float(az.to(u.deg).value),
+                'i': float(u.to(u.Wm2).value),
+            }
+            for index, time, alt, az, intensity in zip(itertools.count, self.time, self.alt, self.az, self.intensity)
+        }
+
+    def dump_yaml(self, file: TextIO):
+        yaml.safe_dump(self.as_dict(), file)

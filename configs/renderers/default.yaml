@@ -1,0 +1,14 @@
+pixels:
+  x0: 800                 # Origin x
+  y0: 600                 # Origin y
+  xs: 4.4                 # Pixel width in µm
+  ys: 4.4                 # Pixel height in µm
+
+detector:
+  xres: 1600
+  yres: 1200
+  noise:
+    distribution: 'normal'
+    parameters:
+      sigma: 3
+      mean: 10

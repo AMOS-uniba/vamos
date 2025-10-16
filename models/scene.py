@@ -1,3 +1,4 @@
+import logging
 from typing import Callable
 
 import matplotlib as mpl
@@ -55,7 +56,7 @@ class Scene:
         self._data = new_data
 
     def build(self, fragments: list[PointSource]):
-        print(f"Building a scene ({self.xres}x{self.yres}) at {self.time}")
+        logging.info(f"Building a scene ({self.xres}x{self.yres}) at {self.time}")
 
         sun = Sunlight(self.location, self.time)
         moon = Moonlight(self.location, self.time)
@@ -66,7 +67,7 @@ class Scene:
         self.add_sky_effects([sun, moon, extinction, airglow])
 
     def render(self, filename = None):
-        print(f"Rendering the scene to file {filename} {self.data.T.shape}")
+        logging.info(f"Rendering the scene to file {filename} {self.data.T.shape}")
         readout = self.flux_to_electrons(lambda x: x * 10)
         readout = np.flip(self.rescale(readout), axis=0)
         Image.fromarray(readout).save(filename)
@@ -80,7 +81,7 @@ class Scene:
         self.catalogue.mask = mask
         altaz = altaz[mask]
 
-        ints = np.exp(-0.921034 * (self.catalogue.vmag(self.location, masked=True) + 19.89)) * u.W / u.m ** 2
+        ints = self.vmag_to_intensity(self.catalogue.vmag(self.location, masked=True))
         self.add_points(altaz.alt, altaz.az, ints)
 
     def add_sky_effects(self,
@@ -92,6 +93,10 @@ class Scene:
         for fragment in fragments:
             alt, az, inten = fragment.at_time(self.time)
             self.add_points(alt, az, inten)
+
+    @staticmethod
+    def vmag_to_intensity(vmag: ArrayLike) -> u.Quantity[u.W / u.m ** 2]:
+        return np.exp(-0.921034 * (vmag + 19.89)) * u.W / u.m ** 2
 
     @staticmethod
     def intensity_to_sigma(intensity: u.Quantity) -> ArrayLike:

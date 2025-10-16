@@ -1,0 +1,26 @@
+available:
+  ago: &ago
+    latitude: 48.372763
+    longitude: 17.373933
+    altitude: 580
+  arbo: &arbo
+    latitude: 48.323447
+    longitude: 18.368468
+    altitude: 244
+  knm: &knm
+    latitude: 49.307336
+    longitude: 18.765383
+    altitude: 460
+  vaz: &vaz
+    latitude: 49.054427
+    longitude: 19.989889
+    altitude: 855
+  sc: &sc
+    latitude: 48.220210
+    longitude: 17.395120
+    altitude: 181
+
+enabled:
+  - *arbo
+  - *ago
+  - *knm
