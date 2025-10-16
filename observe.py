@@ -34,18 +34,13 @@ class MeteorObserverCLI(Scalyca):
         self.add_argument('--cores', type=int, default=4)
 
     def initialize(self):
-        self.meteors = yaml.safe_load(self.args.meteors)
-        self.observers = dotmap.DotMap(yaml.safe_load(self.args.observers)['available'], _dynamic=False)
+        self.observers = dotmap.DotMap(yaml.safe_load(self.args.observers)['enabled'], _dynamic=False)
 
     def main(self):
+        meteor = Meteor.load_yaml(self.args.meteors)
         for oname, obs in self.observers.items():
             observer = Observer(EarthLocation.from_geodetic(lat=obs.latitude, lon=obs.longitude, height=obs.altitude))
-
-            for mname, met in self.meteors.items():
-                meteor = Meteor()
-
-                log.info(f"Now observing {meteor} by {observer}")
-                observer.observe(meteor)
+            log.info(f"Now observing {meteor} by {observer}")
 
     def simulate(self, fragments, times):
 

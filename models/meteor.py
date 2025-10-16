@@ -1,4 +1,5 @@
 import itertools
+import logging
 from typing import TextIO
 
 import numpy as np
@@ -9,6 +10,8 @@ from astropy.coordinates import EarthLocation, CartesianRepresentation, Cartesia
 from astropy.time import Time
 from astropy.units import Quantity
 
+log = logging.getLogger('root')
+
 from pointsource import PointSource
 
 
@@ -17,12 +20,13 @@ class Meteor:
                  initial_time: Time,
                  initial_mass: u.Quantity[u.kg],
                  initial_position: EarthLocation,
-                 initial_velocity: CartesianDifferential):
+                 initial_velocity: CartesianDifferential,
+                 initial_brightness: u.Quantity[u.W] = 0 * u.W):
         self.time: Time = initial_time
         self.mass: u.Quantity[u.kg] = initial_mass
         self.position: EarthLocation = initial_position
         self.velocity: CartesianDifferential = initial_velocity
-        self.brightness: u.Quantity[u.watt] = 0 * u.watt
+        self.brightness: u.Quantity[u.watt] = initial_brightness
 
     def simulate(self,
                  steps: int,
@@ -86,3 +90,22 @@ class Meteor:
         Dumps the meteor to a YAML file.
         """
         yaml.safe_dump(self.as_dict(), filename)
+
+    @staticmethod
+    def load_yaml(filename: TextIO):
+        data = yaml.safe_load(filename)
+        log.info(f"Loading meteor from YAML {filename.name}")
+
+        time = Time([frame['time'] for index, frame in data.items()])
+        position = EarthLocation.from_geodetic(
+            [frame['pos']['lon'] * u.deg for index, frame in data.items()],
+            [frame['pos']['lat'] * u.deg for index, frame in data.items()],
+            [frame['pos']['alt'] * u.m for index, frame in data.items()],
+        )
+        velocity = CartesianDifferential(
+            [frame['vel']['vx'] for index, frame in data.items()] * u.m/u.s,
+            [frame['vel']['vy'] for index, frame in data.items()] * u.m/u.s,
+            [frame['vel']['vz'] for index, frame in data.items()] * u.m/u.s,
+        )
+        brightness = u.Quantity([frame['i'] for index, frame in data.items()]) * u.W
+        return Meteor(time, 0, position, velocity, brightness)

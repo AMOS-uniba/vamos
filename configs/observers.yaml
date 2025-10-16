@@ -21,6 +21,5 @@ available:
     altitude: 181
 
 enabled:
-  - *arbo
-  - *ago
-  - *knm
+  ago: *ago
+  arbo: *arbo

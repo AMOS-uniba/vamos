@@ -22,3 +22,6 @@ class Observer:
         )
 
         return result
+
+    def __str__(self):
+        return f"Observer({self.position.to_geodetic()})"
