@@ -62,6 +62,20 @@ class Meteor:
         self.brightness = 1e4 * u.W * np.ones_like(tau)
         #self.brightness = 1e6 * u.W * np.exp(- self.position.height / u.km / 10)
 
+        self.force(self.position, self.velocity)
+
+    @staticmethod
+    def force(position: EarthLocation, velocity: CartesianDifferential) -> u.Quantity[u.N]:
+        r = position.get_itrs().cartesian.norm()
+        v = velocity.norm()
+        return -
+
+    def __str__(self):
+        return f"<Meteor at {self.time}>"
+
+    def __repr__(self):
+        return f"<Meteor at {self.time}, {self.position}, {self.velocity}, {self.brightness}>"
+
     def as_dict(self):
         """
         Returns a dictionary representation of the meteor, suitable for saving.
