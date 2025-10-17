@@ -1,9 +1,11 @@
 available:
   ago: &ago
+    name: AGO
     latitude: 48.372763
     longitude: 17.373933
     altitude: 580
   arbo: &arbo
+    name: ARBO
     latitude: 48.323447
     longitude: 18.368468
     altitude: 244

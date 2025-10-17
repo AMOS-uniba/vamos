@@ -4,20 +4,22 @@ import os
 import time
 from typing import Optional
 
+import dotmap
 import numpy as np
 
 from multiprocessing import Pool
 
-from astropy.coordinates import EarthLocation, CartesianDifferential
+import yaml
+from astropy.coordinates import EarthLocation
 from astropy.time import Time
 
 from scalyca import Scalyca
 
-from pointsource import PointSource
 from amosutils.projections import Projection
 from amosutils.catalogue import Catalogue
 from amosutils.projections.shifters import ScalingShifter
 
+from models.skypointsource import SkyPointSource
 from models.scene import Scene
 
 
@@ -33,7 +35,8 @@ class MeteorRenderer(Scalyca):
         self.scaler = None
 
     def add_arguments(self):
-        self.add_argument('--meteor-file', '-m', argparse.FileType('r'))
+        self.add_argument('source', type=argparse.FileType('r'))
+        self.add_argument('camera', type=argparse.FileType('r'))
 
     def initialize(self):
         self.location = EarthLocation(self.config.location.longitude,
@@ -41,11 +44,18 @@ class MeteorRenderer(Scalyca):
                                       self.config.location.altitude)
         self.catalogue = Catalogue(self.config.catalogue)
         self.projection = Projection.from_dict(self.config['projection'])
-        self.scaler = ScalingShifter(x0=self.config.pixels.x0, y0=self.config.pixels.y0,
-                                     xs=self.config.pixels.xs, ys=self.config.pixels.ys)
+
+        self.camera = dotmap.DotMap(yaml.safe_load(self.args.camera), _dynamic=False)
+
+        self.scaler = ScalingShifter(x0=self.camera.pixels.x0, y0=self.camera.pixels.y0,
+                                     xs=self.camera.pixels.xs / 1000, ys=self.camera.pixels.ys / 1000)
 
     def main(self):
-        args = [(self.config.detector.xres, self.config.detector.yres,
+        fragments = [SkyPointSource.load_yaml(self.args.source)]
+
+        times = fragments[0].time
+
+        args = [(self.camera.detector.xres, self.camera.detector.yres,
                  self.projection, self.scaler,
                  self.location, self.catalogue, fragments, i, time) for i, time in enumerate(times)]
         pool = Pool(self.config.cores)
@@ -58,7 +68,7 @@ def render(xres: int, yres: int,
            scaler: ScalingShifter,
            location: EarthLocation,
            catalogue: Catalogue,
-           fragments: list[PointSource],
+           fragments: list[SkyPointSource],
            i, timestamp: Time) -> int:
 
     # This is needed so that noise is not generated using the same seed across workers

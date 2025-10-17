@@ -1,24 +1,28 @@
 import numpy as np
-from astropy.coordinates import EarthLocation, AltAz, ITRS, CartesianRepresentation
+from astropy.coordinates import EarthLocation, AltAz, ITRS, CartesianRepresentation, SkyCoord
+from astropy.time import Time
 
-from .meteor import Meteor
-from pointsource import PointSource
+from models.meteor import Meteor
+from models.skypointsource import SkyPointSource
 
 
 class Observer:
     def __init__(self,
-                 position: EarthLocation):
+                 position: EarthLocation,
+                 *,
+                 name: str = ""):
         self.position = position
-        self.altaz = AltAz(location=self.position)
+        self.name = name
 
     def observe(self,
-                meteor: Meteor) -> PointSource:
-        pos = CartesianRepresentation(meteor.position.to_geocentric())
-        position = ITRS(pos).transform_to(self.altaz)
-        brightness = meteor.brightness / (4 * np.pi * position.distance**2)
+                meteor: Meteor) -> SkyPointSource:
 
-        result = PointSource(
-            position.alt, position.az, brightness, meteor.time
+        self.altaz = AltAz(obstime=meteor.time, location=self.position)
+        local = meteor.position.get_itrs(meteor.time, location=self.position).transform_to(self.altaz)
+        brightness = meteor.brightness / (4 * np.pi * local.distance**2)
+
+        result = SkyPointSource(
+            local.alt, local.az, brightness, meteor.time
         )
 
         return result

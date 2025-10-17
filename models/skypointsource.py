@@ -1,17 +1,21 @@
 import itertools
 import math
-from typing import TextIO
-
+import logging
+import yaml
 import numpy as np
 
+from typing import TextIO
+
 import astropy.units as u
-import yaml
 from astropy.coordinates import Angle
 from astropy.time import Time
 from astropy.units import Quantity
 
+log = logging.getLogger('root')
+u.Wm2 = u.W / u.m**2
 
-class PointSource:
+
+class SkyPointSource:
     """
     A point source moving in the sky, defined as the brightness
     of the source in the alt-az system at a specified time, I(alt, az, t)
@@ -74,10 +78,21 @@ class PointSource:
                 'time': time.iso,
                 'alt': float(alt.to(u.deg).value),
                 'az': float(az.to(u.deg).value),
-                'i': float(u.to(u.Wm2).value),
+                'i': float(intensity.to(u.Wm2).value),
             }
-            for index, time, alt, az, intensity in zip(itertools.count, self.time, self.alt, self.az, self.intensity)
+            for index, time, alt, az, intensity in zip(itertools.count(), self.time, self.alt, self.az, self.intensity)
         }
 
     def dump_yaml(self, file: TextIO):
         yaml.safe_dump(self.as_dict(), file)
+
+    @staticmethod
+    def load_yaml(filename: TextIO):
+        data = yaml.safe_load(filename)
+        log.info(f"Loading a point source from YAML {filename.name}")
+
+        time = Time([frame['time'] for index, frame in data.items()])
+        alt = Angle([frame['alt'] * u.deg for index, frame in data.items()])
+        az = Angle([frame['az'] * u.deg for index, frame in data.items()])
+        inten = Quantity([frame['i'] * u.Wm2 for index, frame in data.items()])
+        return SkyPointSource(alt, az, inten, time)

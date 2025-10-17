@@ -5,6 +5,7 @@ from typing import TextIO
 import numpy as np
 
 import astropy.units as u
+import astropy.constants as const
 import yaml
 from astropy.coordinates import EarthLocation, CartesianRepresentation, CartesianDifferential
 from astropy.time import Time
@@ -12,7 +13,7 @@ from astropy.units import Quantity
 
 log = logging.getLogger('root')
 
-from pointsource import PointSource
+from models.skypointsource import SkyPointSource
 
 
 class Meteor:
@@ -62,19 +63,28 @@ class Meteor:
         self.brightness = 1e4 * u.W * np.ones_like(tau)
         #self.brightness = 1e6 * u.W * np.exp(- self.position.height / u.km / 10)
 
-        self.force(self.position, self.velocity)
-
     @staticmethod
-    def force(position: EarthLocation, velocity: CartesianDifferential) -> u.Quantity[u.N]:
-        r = position.get_itrs().cartesian.norm()
+    def acceleration(position: EarthLocation, velocity: CartesianDifferential) -> u.Quantity[u.N]:
+        """
+        Calculate the gravitational acceleration and inertial accelerations
+        acting on a body at defined position and velocity.
+        """
+
+        pos = position.get_itrs().cartesian
+        r = pos.norm()
         v = velocity.norm()
-        return -
+        omega = CartesianRepresentation(0 * u.rad / u.s, 0 * u.rad / u.s, 7.2921550e-5 * u.rad / u.s).xyz
+        return (
+            -((const.G * const.M_earth / r**3) * pos).xyz.T
+            - 2 * np.cross(omega.to_value(u.rad / u.s), velocity.d_xyz.T.to_value(u.m / u.s)) * u.m / u.s**2
+            - np.cross(omega, np.cross(omega, pos.xyz.T)) / (u.rad**2)
+        ).to(u.m / u.s**2)
 
     def __str__(self):
-        return f"<Meteor at {self.time}>"
+        return f"<Meteor at {self.time[0]}>"
 
     def __repr__(self):
-        return f"<Meteor at {self.time}, {self.position}, {self.velocity}, {self.brightness}>"
+        return f"<Meteor at {self.time[0]}>"
 
     def as_dict(self):
         """
@@ -122,4 +132,4 @@ class Meteor:
             [frame['vel']['vz'] for index, frame in data.items()] * u.m/u.s,
         )
         brightness = u.Quantity([frame['i'] for index, frame in data.items()]) * u.W
-        return Meteor(time, 0, position, velocity, brightness)
+        return Meteor(time, 0 * u.kg, position, velocity, brightness)

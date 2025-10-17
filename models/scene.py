@@ -15,7 +15,7 @@ from astropy.time import Time
 from amosutils.projections import BorovickaProjection, Projection
 
 from effects.sky import SkySource, Sunlight, Airglow, Moonlight, Extinction
-from pointsource import PointSource
+from models.skypointsource import SkyPointSource
 
 u.Wm2 = u.W / u.m**2
 u.ms = u.m / u.s
@@ -55,7 +55,7 @@ class Scene:
     def data(self, new_data):
         self._data = new_data
 
-    def build(self, fragments: list[PointSource]):
+    def build(self, fragments: list[SkyPointSource]):
         logging.info(f"Building a scene ({self.xres}x{self.yres}) at {self.time}")
 
         sun = Sunlight(self.location, self.time)
@@ -89,7 +89,7 @@ class Scene:
         for source in sources:
             self.data = source(self.data, self.alt, self.az)
 
-    def add_fragments(self, fragments: list[PointSource]):
+    def add_fragments(self, fragments: list[SkyPointSource]):
         for fragment in fragments:
             alt, az, inten = fragment.at_time(self.time)
             self.add_points(alt, az, inten)

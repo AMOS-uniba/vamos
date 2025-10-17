@@ -32,8 +32,8 @@ class MeteorSimulatorCLI(Scalyca):
 
     def main(self):
         m = Meteor(self.t0, 1 * u.kg,
-                   EarthLocation.from_geodetic(lat=48.372763 * u.deg, lon=17.373933 * u.deg, height=10 * u.km),
-                   CartesianDifferential(-8570 * u.m / u.s, 28250 * u.m / u.s, -2750 * u.m / u.s))
+                   EarthLocation.from_geodetic(lat=48.372763 * u.deg, lon=17.373933 * u.deg, height=100 * u.km),
+                   CartesianDifferential(-8682 * u.m / u.s, 28657 * u.m / u.s, -2755 * u.m / u.s))
 
         m.simulate(self.config.count, self.dt)
 
