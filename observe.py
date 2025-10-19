@@ -5,14 +5,14 @@ import argparse
 import sys
 
 import yaml
-import numpy as np
-import dotmap
+
 from scalyca import Scalyca
+from scalyca import colour as c
 
 from multiprocessing import Pool
 
 import astropy.units as u
-from astropy.coordinates import EarthLocation, CartesianDifferential, AltAz, SkyCoord, CartesianRepresentation
+from astropy.coordinates import EarthLocation, CartesianDifferential, AltAz, SkyCoord
 from astropy.time import Time
 
 from models.meteor import Meteor
@@ -68,28 +68,23 @@ class MeteorObserverCLI(Scalyca):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.meteors = None
-        self.observers = None
+        self.observer = None
 
     def add_arguments(self):
         self.add_argument('meteors', type=argparse.FileType('r'))
-        self.add_argument('observers', type=argparse.FileType('r'))
+        self.add_argument('observer', type=argparse.FileType('r'))
         self.add_argument('--cores', type=int, default=4)
         self.add_argument('-o', '--outfile', type=argparse.FileType('w'), default=sys.stdout)
 
     def initialize(self):
-        self.observers = dotmap.DotMap(yaml.safe_load(self.args.observers)['enabled'], _dynamic=False)
+        self.meteor = Meteor.load_yaml(self.args.meteors)
+        self.observer = Observer.load_dict(yaml.safe_load(self.args.observer))
 
     def main(self):
-        meteor = Meteor.load_yaml(self.args.meteors)
-
-        for oname, obs in self.observers.items():
-            observer = Observer(EarthLocation.from_geodetic(lat=obs.latitude, lon=obs.longitude, height=obs.altitude),
-                                name=obs.name)
-            log.info(f"Now observing {meteor} by {observer}")
-
-            points = observer.observe(meteor)
-
-            points.dump_yaml(self.args.outfile)
+        log.info(f"Now observing {self.meteor} by {self.observer}")
+        points = self.observer.observe(self.meteor)
+        log.info(f"Saving {points} to {c.path(self.args.outfile.name)}")
+        points.dump_yaml(self.args.outfile)
 
     def simulate(self, fragments, times):
 

@@ -2,8 +2,10 @@
 import argparse
 import os
 import time
+from pathlib import Path
 from typing import Optional
 
+import argparsedirs
 import dotmap
 import numpy as np
 
@@ -37,6 +39,8 @@ class MeteorRenderer(Scalyca):
     def add_arguments(self):
         self.add_argument('source', type=argparse.FileType('r'))
         self.add_argument('camera', type=argparse.FileType('r'))
+        self.add_argument('output_dir', type=argparsedirs.WriteableDirType)
+        self.add_argument('-c', '--cores', type=int, default=4)
 
     def initialize(self):
         self.location = EarthLocation(self.config.location.longitude,
@@ -50,6 +54,11 @@ class MeteorRenderer(Scalyca):
         self.scaler = ScalingShifter(x0=self.camera.pixels.x0, y0=self.camera.pixels.y0,
                                      xs=self.camera.pixels.xs / 1000, ys=self.camera.pixels.ys / 1000)
 
+        self.output_dir = Path(self.args.output_dir)
+
+        if self.args.cores:
+            self.config.cores = self.args.cores
+
     def main(self):
         fragments = [SkyPointSource.load_yaml(self.args.source)]
 
@@ -57,7 +66,7 @@ class MeteorRenderer(Scalyca):
 
         args = [(self.camera.detector.xres, self.camera.detector.yres,
                  self.projection, self.scaler,
-                 self.location, self.catalogue, fragments, i, time) for i, time in enumerate(times)]
+                 self.location, self.catalogue, fragments, i, time, self.output_dir) for i, time in enumerate(times)]
         pool = Pool(self.config.cores)
         print(f"Rendering {len(fragments)} fragments at {len(times)} times")
         pool.starmap(render, args, 1)
@@ -69,7 +78,8 @@ def render(xres: int, yres: int,
            location: EarthLocation,
            catalogue: Catalogue,
            fragments: list[SkyPointSource],
-           i, timestamp: Time) -> int:
+           i, timestamp: Time,
+           directory: Path) -> int:
 
     # This is needed so that noise is not generated using the same seed across workers
     np.random.seed((os.getpid() * int(time.time())) % 123456789)
@@ -81,7 +91,7 @@ def render(xres: int, yres: int,
     scene.add_intensifier_noise(100, 10, radius=70)
     scene.add_thermal_noise(rate=40)
 
-    scene.render(f'output/{i:03}.png')
+    scene.render(directory / f'{i:03}.png')
     return 1
 
 

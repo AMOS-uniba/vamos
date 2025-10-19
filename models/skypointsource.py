@@ -67,10 +67,10 @@ class SkyPointSource:
         return alt, az, intensity
 
     def __str__(self):
-        return f"{self.alt=}, {self.az=}, {self.intensity=}, {self.time=}"
+        return self.__repr__()
 
     def __repr__(self):
-        return self.__str__()
+        return rf"<SkyPointSource with {len(self.alt)} frames at {self.time[0]}>"
 
     def as_dict(self):
         return {
