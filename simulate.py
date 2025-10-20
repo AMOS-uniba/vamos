@@ -23,7 +23,8 @@ class MeteorSimulatorCLI(Scalyca):
     _version = VERSION
 
     def add_arguments(self):
-        self.add_argument('-o', '--outfile', type=argparse.FileType('w'), default=sys.stdout)
+        self.add_argument('-o', '--outfile', type=argparse.FileType('w'), default=sys.stdout,
+                          help="Output YAML file")
 
     def initialize(self):
         self.t0 = Time(self.config.start)
