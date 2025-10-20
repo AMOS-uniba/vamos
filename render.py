@@ -14,6 +14,7 @@ from multiprocessing import Pool
 import yaml
 from astropy.coordinates import EarthLocation
 from astropy.time import Time
+from astropy import units as u
 
 from scalyca import Scalyca
 
@@ -60,15 +61,18 @@ class MeteorRenderer(Scalyca):
             self.config.cores = self.args.cores
 
     def main(self):
-        fragments = [SkyPointSource.load_yaml(self.args.source)]
+        self.t0 = Time(self.config.start)
+        self.dt = 0.05 * u.s
+        self.times = self.t0 + np.arange(0, self.config.count) * self.dt
+        print(self.times)
 
-        times = fragments[0].time
+        fragments = [SkyPointSource.load_yaml(self.args.source)]
 
         args = [(self.camera.detector.xres, self.camera.detector.yres,
                  self.projection, self.scaler,
-                 self.location, self.catalogue, fragments, i, time, self.output_dir) for i, time in enumerate(times)]
+                 self.location, self.catalogue, fragments, i, time, self.output_dir) for i, time in enumerate(self.times)]
         pool = Pool(self.config.cores)
-        print(f"Rendering {len(fragments)} fragments at {len(times)} times")
+        print(f"Rendering {len(fragments)} fragments at {len(self.times)} times using {self.config.cores} cores")
         pool.starmap(render, args, 1)
 
 

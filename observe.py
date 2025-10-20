@@ -86,23 +86,5 @@ class MeteorObserverCLI(Scalyca):
         log.info(f"Saving {points} to {c.path(self.args.outfile.name)}")
         points.dump_yaml(self.args.outfile)
 
-    def simulate(self, fragments, times):
-
-        args = [(self.config.detector.xres, self.config.detector.yres,
-                 self.projection, self.scaler,
-                 self.location, self.catalogue, fragments, i, time) for i, time in enumerate(times)]
-        pool = Pool(self.config.cores)
-        print(f"Rendering {len(fragments)} fragments at {len(times)} times")
-        pool.starmap(render, args, 1)
-
-    def simulate(
-            self,
-            position: EarthLocation,
-            velocity: CartesianDifferential,
-            time: Time,
-        ):
-        pool = Pool(self.config.cores)
-
-
 
 observer_cli = MeteorObserverCLI().run()

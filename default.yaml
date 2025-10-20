@@ -8,8 +8,8 @@ location:
     longitude: 17.373933
     altitude: 580
 
-start: "2025-10-01T20:00:00"
-count: 50
+start: "2025-10-01T19:59:59"
+count: 70
 
 cores: 4
 
