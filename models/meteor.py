@@ -97,6 +97,9 @@ class Meteor:
                     'lat': float(position.lat.value),
                     'lon': float(position.lon.value),
                     'alt': float(position.height.to(u.m).value),
+                    'x': float(position.x.to(u.m).value),
+                    'y': float(position.y.to(u.m).value),
+                    'z': float(position.z.to(u.m).value),
                 },
                 'vel': {
                     'vx': float(velocity.d_x.value),

@@ -27,17 +27,20 @@ class SkyPointSource:
     def __init__(self,
                  alt: Angle,            # Angle
                  az: Angle,             # Angle
+                 dist: Quantity[u.m],
                  intensity: Quantity,   # Watt per square metre
                  time: Time):
-        assert alt.shape == az.shape == intensity.shape == time.shape, \
-            f"Shapes do not match: {alt.shape=}, {az.shape=}, {intensity.shape=}, {time.shape=}"
+        assert alt.shape == az.shape == dist.shape == intensity.shape == time.shape, \
+            f"Shapes do not match: {alt.shape=}, {az.shape=}, {dist.shape=}, {intensity.shape=}, {time.shape=}"
 
         self._alt = alt
         self._az = az
+        self._dist = dist
         self._intensity = intensity
         self._time = time
 
         assert self._intensity.unit.is_equivalent(u.W / u.m**2)
+        assert self._dist.unit.is_equivalent(u.m)
 
     @property
     def alt(self):
@@ -46,6 +49,10 @@ class SkyPointSource:
     @property
     def az(self):
         return self._az
+
+    @property
+    def dist(self):
+        return self._dist
 
     @property
     def intensity(self):
@@ -63,6 +70,7 @@ class SkyPointSource:
         stime = self.time.jd2
         alt = np.interp(time, stime, self.alt)
         az = np.interp(time, stime, self.az, period=math.tau)
+        dist = np.interp(time, stime, self.dist)
         intensity = np.interp(time, stime, self.intensity, left=0, right=0)
         return alt, az, intensity
 
@@ -78,9 +86,11 @@ class SkyPointSource:
                 'time': time.iso,
                 'alt': float(alt.to(u.deg).value),
                 'az': float(az.to(u.deg).value),
+                'dist': float(dist.to(u.m).value),
                 'i': float(intensity.to(u.Wm2).value),
             }
-            for index, time, alt, az, intensity in zip(itertools.count(), self.time, self.alt, self.az, self.intensity)
+            for index, time, alt, az, dist, intensity
+            in zip(itertools.count(), self.time, self.alt, self.az, self.dist, self.intensity)
         }
 
     def dump_yaml(self, file: TextIO):
@@ -94,5 +104,6 @@ class SkyPointSource:
         time = Time([frame['time'] for index, frame in data.items()])
         alt = Angle([frame['alt'] * u.deg for index, frame in data.items()])
         az = Angle([frame['az'] * u.deg for index, frame in data.items()])
+        dist = Quantity([frame['dist'] * u.m for index, frame in data.items()])
         inten = Quantity([frame['i'] * u.Wm2 for index, frame in data.items()])
-        return SkyPointSource(alt, az, inten, time)
+        return SkyPointSource(alt, az, dist, inten, time)

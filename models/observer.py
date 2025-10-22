@@ -19,12 +19,10 @@ class Observer:
                 meteor: Meteor) -> SkyPointSource:
 
         self.altaz = AltAz(obstime=meteor.time, location=self.location)
-        local = meteor.position.get_itrs(meteor.time, location=self.location).transform_to(self.altaz)
+        local = meteor.position.get_itrs(obstime=meteor.time, location=self.location).transform_to(self.altaz)
         brightness = meteor.brightness / (4 * np.pi * local.distance**2)
 
-        result = SkyPointSource(
-            local.alt, local.az, brightness, meteor.time
-        )
+        result = SkyPointSource(local.alt, local.az, local.distance, brightness, meteor.time)
 
         return result
 
