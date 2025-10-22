@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import logging
 import os
 import time
 from pathlib import Path
@@ -18,7 +19,7 @@ from astropy import units as u
 
 from scalyca import Scalyca
 
-from amosutils.projections import Projection
+from amosutils.projections import Projection, BorovickaProjection
 from amosutils.catalogue import Catalogue
 from amosutils.projections.shifters import ScalingShifter
 
@@ -28,12 +29,13 @@ from models.scene import Scene
 
 
 np.set_printoptions(edgeitems=100)
+log = logging.getLogger('root')
+VERSION = '0.1.1'
 
 
 class MeteorRenderer(Scalyca):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.location: Optional[EarthLocation] = None
         self.catalogue: Optional[Catalogue] = None
         self.projection: Optional[Projection] = None
         self.scaler = None
@@ -45,15 +47,23 @@ class MeteorRenderer(Scalyca):
                           help="Observer YAML file (configs/observers/*.yaml)")
         self.add_argument('camera', type=argparse.FileType('r'),
                           help="Camera configuration file (YAML)")
+        self.add_argument('-c', '--catalogue', type=argparse.FileType('r'), default="config/catalogues/HYG30.tsv",
+                          help="Star catalogue file (DSV)")
+        self.add_argument('-p', '--projection', type=argparse.FileType('r'))
         self.add_argument('output_dir', type=argparsedirs.WriteableDirType,
                           help="Output directory for PNG files")
-        self.add_argument('-c', '--cores', type=int, default=4,
+        self.add_argument('-j', '--cores', type=int, default=4,
                           help="Number of CPU cores to use")
 
     def initialize(self):
         self.observer = Observer.load_dict(yaml.safe_load(self.args.observer))
-        self.catalogue = Catalogue(self.config.catalogue)
-        self.projection = Projection.from_dict(self.config['projection'])
+        self.catalogue = Catalogue(self.args.catalogue)
+
+        if self.args.projection:
+            self.projection = Projection.from_dict(yaml.safe_load(self.args.projection))
+        else:
+            self.projection = BorovickaProjection()
+            logging.warning("No Projection specified, using default")
 
         self.camera = dotmap.DotMap(yaml.safe_load(self.args.camera), _dynamic=False)
 
@@ -75,7 +85,7 @@ class MeteorRenderer(Scalyca):
 
         args = [(self.camera.detector.xres, self.camera.detector.yres,
                  self.projection, self.scaler,
-                 self.location, self.catalogue, fragments, i, time, self.output_dir) for i, time in enumerate(self.times)]
+                 self.observer.location, self.catalogue, fragments, i, time, self.output_dir) for i, time in enumerate(self.times)]
         pool = Pool(self.config.cores)
         print(f"Rendering {len(fragments)} fragments at {len(self.times)} times using {self.config.cores} cores")
         pool.starmap(render, args, 1)

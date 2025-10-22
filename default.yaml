@@ -1,25 +1,8 @@
 extinction:
   airmass: 'Kasten-Young'
 
-catalogue: '../vasco/catalogues/HYG30.tsv'
 
 start: "2025-10-01T19:59:59"
 count: 70
 
 cores: 4
-
-projection:
-  name: 'Borovička'
-  parameters:
-    x0: 0
-    y0: 0
-    a0: 1.570
-    A: 0.0
-    F: 0.0
-    V: 0.5
-    S: 0
-    D: 0
-    P: 0.00
-    Q: 0.00
-    epsilon: 0.0
-    E: 0
