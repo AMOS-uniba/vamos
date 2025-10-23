@@ -101,7 +101,8 @@ class Scene:
     @staticmethod
     def intensity_to_sigma(intensity: u.Quantity) -> ArrayLike:
         """
-        Obtain the Gaussian spatial profile variance as a function of brightness
+        Obtain the Gaussian spatial profile variance as a function of brightness.
+        Some highly non-trivial function is expected here.
         """
         return np.where(
             intensity < 1e-12 * u.Wm2,

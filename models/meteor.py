@@ -9,11 +9,8 @@ import astropy.constants as const
 import yaml
 from astropy.coordinates import EarthLocation, CartesianRepresentation, CartesianDifferential
 from astropy.time import Time
-from astropy.units import Quantity
 
 log = logging.getLogger('root')
-
-from models.skypointsource import SkyPointSource
 
 
 class Meteor:

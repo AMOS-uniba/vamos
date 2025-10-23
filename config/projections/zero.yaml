@@ -2,7 +2,7 @@ name: 'Borovička'
 parameters:
   x0: 0
   y0: 0
-  a0: 1.570
+  a0: 1.5707963267948966
   A: 0.0
   F: 0.0
   V: 0.5
