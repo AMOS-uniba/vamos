@@ -1,6 +1,6 @@
 import itertools
 import logging
-from typing import TextIO
+from typing import TextIO, Any
 
 import numpy as np
 
@@ -109,17 +109,26 @@ class Meteor:
             zip(itertools.count(), self.time, self.position, self.velocity, self.brightness)
         }
 
-    def dump_yaml(self, filename: TextIO):
-        """
-        Dumps the meteor to a YAML file.
-        """
-        yaml.safe_dump(self.as_dict(), filename)
+    @staticmethod
+    def create_from_yaml(data):
+        return Meteor(
+            Time(data['time']),
+            data['mass'] * u.kg,
+            EarthLocation.from_geodetic(
+                data['location']['longitude'] * u.deg,
+                data['location']['latitude'] * u.deg,
+                data['location']['altitude'] * u.m,
+            ),
+            CartesianDifferential(
+                data['velocity']['x'] * u.m / u.s,
+                data['velocity']['y'] * u.m / u.s,
+                data['velocity']['z'] * u.m / u.s,
+            ),
+            0 * u.W,
+        )
 
     @staticmethod
-    def load_yaml(filename: TextIO):
-        data = yaml.safe_load(filename)
-        log.info(f"Loading meteor from YAML {filename.name}")
-
+    def load_dict(data: dict[str, Any]):
         time = Time([frame['time'] for index, frame in data.items()])
         position = EarthLocation.from_geodetic(
             [frame['pos']['lon'] * u.deg for index, frame in data.items()],

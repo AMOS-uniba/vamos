@@ -7,6 +7,7 @@ import numpy as np
 
 from multiprocessing import Pool
 
+import yaml
 from astropy.coordinates import EarthLocation, CartesianDifferential
 from astropy.time import Time
 import astropy.units as u
@@ -23,6 +24,8 @@ class MeteorSimulatorCLI(Scalyca):
     _version = VERSION
 
     def add_arguments(self):
+        self.add_argument('meteor', type=argparse.FileType('r'),
+                          help="YAML file with meteor configuration")
         self.add_argument('-o', '--outfile', type=argparse.FileType('w'), default=sys.stdout,
                           help="Output YAML file")
 
@@ -32,13 +35,7 @@ class MeteorSimulatorCLI(Scalyca):
         self.times = self.t0 + np.arange(0, self.config.count) * self.dt
 
     def main(self):
-        m = Meteor(
-            self.t0 + 1 * u.s, 1 * u.kg,
-            EarthLocation.from_geodetic(lat=48.372763 * u.deg, lon=17.373933 * u.deg, height=100 * u.km),
-            #CartesianDifferential(0 * u.m / u.s, 0 * u.m / u.s, 0 * u.m / u.s),
-            CartesianDifferential(-8682 * u.m / u.s, 28657 * u.m / u.s, -2755 * u.m / u.s),
-        )
-
+        m = Meteor.create_from_yaml(yaml.safe_load(self.args.meteor))
         m.simulate(self.config.count, self.dt)
 
         if self.args.debug:
@@ -49,7 +46,7 @@ class MeteorSimulatorCLI(Scalyca):
                 )
 
         if self.args.outfile:
-            m.dump_yaml(self.args.outfile)
+            yaml.dump(m.as_dict(), self.args.outfile)
 
 
 def simulate(

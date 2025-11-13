@@ -12,6 +12,7 @@ astropy = "*"
 matplotlib = "*"
 pyyaml = "*"
 scalyca = {path = '/home/kvik/python/scalyca/', editable=true}
+enschema = "*"
 
 [dev-packages]
 pytest = "*"

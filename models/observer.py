@@ -1,13 +1,24 @@
-import dotmap
 import numpy as np
+
 from astropy.coordinates import EarthLocation, AltAz, ITRS, CartesianRepresentation, SkyCoord
-from astropy.time import Time
+import astropy.units as u
+
+from enschema import Schema
 
 from models.meteor import Meteor
 from models.skypointsource import SkyPointSource
 
 
 class Observer:
+    _schema = Schema({
+        'name': str,
+        'location': {
+            'latitude': float,
+            'longitude': float,
+            'altitude': float,
+        }
+    })
+
     def __init__(self,
                  location: EarthLocation,
                  *,
@@ -28,6 +39,16 @@ class Observer:
 
     def __str__(self):
         return f"Observer({self.location.to_geodetic()})"
+
+    def as_dict(self):
+        return self._schema.validate({
+            'name': self.name,
+            'location': {
+                'latitude': float(self.location.lat.to(u.deg).value),
+                'longitude': float(self.location.lon.to(u.deg).value),
+                'altitude': float(self.location.height.to(u.m).value),
+            }
+        })
 
     @staticmethod
     def load_dict(data: dict):

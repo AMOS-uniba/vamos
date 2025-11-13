@@ -1,8 +1,5 @@
 extinction:
   airmass: 'Kasten-Young'
 
-
-start: "2025-10-01T19:59:59"
-count: 70
-
-cores: 4
+start: "2025-10-01T20:20:20"
+count: 100

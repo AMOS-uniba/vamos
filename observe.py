@@ -3,7 +3,9 @@ import logging
 
 import argparse
 import sys
+from typing import TextIO
 
+import numpy as np
 import yaml
 
 from scalyca import Scalyca
@@ -17,6 +19,7 @@ from astropy.time import Time
 
 from models.meteor import Meteor
 from models.observer import Observer
+from models.skypointsource import SkyPointSource
 
 log = logging.getLogger('root')
 VERSION = '0.1.1'
@@ -40,16 +43,121 @@ class MeteorObserverCLI(Scalyca):
                           help="Number of CPU cores to use")
         self.add_argument('-o', '--outfile', type=argparse.FileType('w'), default=sys.stdout,
                           help="Output YAML file")
+        self.add_argument('-x', '--xml', type=argparse.FileType('w'),
+                          help="Output XML file")
 
     def initialize(self):
-        self.meteor = Meteor.load_yaml(self.args.meteors)
+        self.meteor = Meteor.load_dict(yaml.safe_load(self.args.meteors))
         self.observer = Observer.load_dict(yaml.safe_load(self.args.observer))
 
     def main(self):
         log.info(f"Now observing {self.meteor} by {self.observer}")
         points = self.observer.observe(self.meteor)
         log.info(f"Saving {points} to {c.path(self.args.outfile.name)}")
-        points.dump_yaml(self.args.outfile)
 
+        yaml.dump({
+            'observer': self.observer.as_dict(),
+            'sources': [
+                points.as_dict()
+            ]}, self.args.outfile)
+
+        if self.args.xml:
+            self.dump_xml(points, self.args.xml, self.observer)
+        else:
+            log.warning(f"No XML output set, ignoring")
+
+    def dump_xml(self,
+                 points: SkyPointSource,
+                 file: TextIO,
+                 observer: Observer):
+        data = points.as_dict()
+        time = self.meteor.time[0]
+        file.write(
+            f"""<?xml version="1.0" encoding="UTF-8" ?>
+<ufoanalyzer_record version ="200"
+    clip_name="{self.observer.name}"
+    o="1"
+    y="{time.strftime("%Y")}"
+    mo="{time.strftime("%m")}"
+    d="{time.strftime("%d")}"
+    h="{time.strftime("%H")}"
+    m="{time.strftime("%M")}"
+    s="{time.strftime('%S.%f')}"
+    tz="0" tme="0" lid="{observer.name}" sid=""
+    lng="{observer.location.lon.value}" lat="{observer.location.lat.value}" alt="{observer.location.height.value}"
+    cx="1600" cy="1200"
+    fps="20" interlaced="0" bbf="0"
+    frames="{len(points.alt)}"
+    head="15"
+    tail="0" drop="-1"
+    dlev="0" dsize="0" sipos="0" sisize="0"
+    trig="0" observer="{observer.name}" cam="" lens=""
+    cap="" u2="0" ua="0" memo=""
+    az="0" ev="0" rot="0" vx="0"
+    yx="0" dx="0" dy="0" k4="0"
+    k3="0" k2="0" atc="0" BVF="0"
+    maxLev="0" maxMag="0" minLev="0" mimMag="0"
+    dl="0" leap="0" pixs="0" rstar="0"
+    ddega="0" ddegm="0" errm="0" Lmrgn="0"
+    Rmrgn="0" Dmrgn="0" Umrgn="0">
+    <ua2_objects>
+        <ua2_object
+            fs="20" fe="64" fN="45" sN="45"
+            sec="3" av="0" pix="0" bmax="0"
+            bN="0" Lmax="0" mag="0" cdeg="0"
+            cdegmax="0" io="0" raP="0" dcP="0"
+            av1="0" x1="0" y1="0" x2="0"
+            y2="0" az1="0" ev1="0" az2="0"
+            ev2="0" azm="0" evm="0" ra1="0"
+            dc1="0" ra2="0" dc2="0" ram="0"
+            dcm="0" class="spo" m="0" dr="0"
+            dv="0" Vo="0" lng1="0" lat1="0"
+            h1="0" dist1="0" gd1="0" azL1="0"
+            evL1="0" lng2="0" lat2="0" h2="0"
+            dist2="0" gd2="0" len="0" GV="0"
+            rao="0" dco="0" Voo="0" rat="0"
+            dct="0" memo=""
+            CodeRed="G"
+            ACOM="324"
+            sigma="0"
+            sigma.azi="0"
+            sigma.zen="0"
+            A0="0"
+            X0="0"
+            Y0="0"
+            V="0.5"
+            S="0"
+            D="0"
+            EPS="0"
+            E="0"
+            A="0"
+            F0="0"
+            P="0"
+            Q="0"
+            C="1"
+            CH1="0"
+            CH2="0"
+            CH3="0"
+            CH4="0"
+            magA="0"
+            magB="0"
+            magR2="0"
+            magS="0"
+            usingPrecession="False">
+            <ua2_objpath>
+""")
+        for index, frame in data.items():
+            file.write(f'                <ua2_fdata2 fno="{15 + index}" b="0" bm="0" Lsum="0" mag="{np.log(frame['i'])}" az="{frame['az']}" ev="{frame['alt']}" ra="0" dec="0"/>\n')
+        file.write(
+"""            </ua2_objpath>
+        </ua2_object>
+    </ua2_objects>
+</ufoanalyzer_record>""")
+
+    def print_meteor(self):
+        df = super()._get_meteor()
+        return df.to_xml(index=False, root_name='ua2_objpath', row_name='ua2_fdata2',
+                         xml_declaration=False, pretty_print=True,
+                         attr_cols=['fno', 'b', 'bm', 'Lsum', 'mag', 'mag_r', 'az', 'ev', 'az_r', 'ev_r', 'ra', 'dec'])
 
 observer_cli = MeteorObserverCLI().run()

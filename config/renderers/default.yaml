@@ -1,8 +1,8 @@
 pixels:
-  x0: 800                 # Origin x
-  y0: 600                 # Origin y
-  xs: 4.4                 # Pixel width in µm
-  ys: 4.4                 # Pixel height in µm
+  x0: 799.5                 # Origin x
+  y0: 599.5                 # Origin y
+  xs: 4.4                   # Pixel width in µm
+  ys: 4.4                   # Pixel height in µm
 
 detector:
   xres: 1600
@@ -12,3 +12,7 @@ detector:
     parameters:
       sigma: 3
       mean: 10
+
+padding:
+  start: 0.5
+  end: 0.5

@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "3ea9592a3cd470176aabace41930c727218ba7b113a9658b531ae2f1ffc518fa"
+            "sha256": "03e7d2ba6cbb2a2761b0f2ce307b916fdff3ede4229c941148c1387decf752cd"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -74,11 +74,11 @@
         },
         "astropy-iers-data": {
             "hashes": [
-                "sha256:c1ecc6a8fc407e2388a309490a28bddfea6e049269ce490607218dab97cd0df6",
-                "sha256:e22cd7e7d00383988b08a7fcc0b77b9b3e9cd22a061103405c3d6efdd08a6e5e"
+                "sha256:2a0630f810bcba7978cc5f3f92a45910b5ea95d885302b1879b0132e920302ed",
+                "sha256:aa91d24155eec2e7dafffd9ce0f046cd1fd6bcd995a76904aba3ef3f6836c4dc"
             ],
             "markers": "python_version >= '3.8'",
-            "version": "==0.2025.10.13.0.37.17"
+            "version": "==0.2025.10.27.0.39.10"
         },
         "colorama": {
             "hashes": [
@@ -180,6 +180,15 @@
                 "sha256:bd9fa15286ea2ad899a4d1dc2445ed85a1ae884a42effb87c89a6ecce71243c6"
             ],
             "version": "==1.3.30"
+        },
+        "enschema": {
+            "hashes": [
+                "sha256:a4f37c04ec192cb8d33ac2aaeb2620008a09994a3c88e2a56f6676370da77ad4",
+                "sha256:e128802c2832fbd40db1b51feed83d6a3592573f73ef50332228bce2848b80d1"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.10' and python_version < '4.0'",
+            "version": "==0.1.5"
         },
         "fonttools": {
             "hashes": [
@@ -906,11 +915,11 @@
         },
         "iniconfig": {
             "hashes": [
-                "sha256:3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7",
-                "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760"
+                "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730",
+                "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12"
             ],
-            "markers": "python_version >= '3.8'",
-            "version": "==2.1.0"
+            "markers": "python_version >= '3.10'",
+            "version": "==2.3.0"
         },
         "ipython": {
             "hashes": [
@@ -939,11 +948,11 @@
         },
         "matplotlib-inline": {
             "hashes": [
-                "sha256:8423b23ec666be3d16e16b60bdd8ac4e86e840ebd1dd11a30b9f117f2fa0ab90",
-                "sha256:df192d39a4ff8f21b1895d72e6a13f5fcc5099f00fa84384e0ea28c2cc0653ca"
+                "sha256:d56ce5156ba6085e00a9d54fead6ed29a9c47e215cd1bba2e976ef39f5710a76",
+                "sha256:e1ee949c340d771fc39e241ea75683deb94762c8fa5f2927ec57c83c4dffa9fe"
             ],
-            "markers": "python_version >= '3.8'",
-            "version": "==0.1.7"
+            "markers": "python_version >= '3.9'",
+            "version": "==0.2.1"
         },
         "packaging": {
             "hashes": [

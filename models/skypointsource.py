@@ -1,15 +1,18 @@
+import datetime
 import itertools
 import math
 import logging
 import yaml
 import numpy as np
 
-from typing import TextIO
+from typing import TextIO, Any
 
 import astropy.units as u
+from amosutils.projections import Projection
 from astropy.coordinates import Angle
 from astropy.time import Time
 from astropy.units import Quantity
+from enschema import Schema
 
 log = logging.getLogger('root')
 u.Wm2 = u.W / u.m**2
@@ -23,6 +26,16 @@ class SkyPointSource:
     Can be interpolated to any specified time,
     or extrapolated (in which case the brightness is assumed to be zero).
     """
+
+    _schema = Schema({
+        int: {
+            'alt': float,
+            'az': float,
+            'dist': float,
+            'i': float,
+            'time': datetime.datetime,
+        }
+    })
 
     def __init__(self,
                  alt: Angle,            # Angle
@@ -93,14 +106,9 @@ class SkyPointSource:
             in zip(itertools.count(), self.time, self.alt, self.az, self.dist, self.intensity)
         }
 
-    def dump_yaml(self, file: TextIO):
-        yaml.safe_dump(self.as_dict(), file)
-
-    @staticmethod
-    def load_yaml(filename: TextIO):
-        data = yaml.safe_load(filename)
-        log.info(f"Loading a point source from YAML {filename.name}")
-
+    @classmethod
+    def load_dict(cls, data: dict[str, Any]):
+        data = cls._schema.validate(data)
         time = Time([frame['time'] for index, frame in data.items()])
         alt = Angle([frame['alt'] * u.deg for index, frame in data.items()])
         az = Angle([frame['az'] * u.deg for index, frame in data.items()])
