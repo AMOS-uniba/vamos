@@ -1,0 +1,21 @@
+[project]
+name = "vamos"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "amosutils>=0.2.3",
+    "astropy>=8.0.1",
+    "enschema>=0.1.5",
+    "matplotlib>=3.11.1",
+    "numpy>=2.5.1",
+    "pandas>=3.0.5",
+    "pyyaml>=6.0.3",
+    "scalyca>=0.2.7",
+    "scipy>=1.18.0",
+]
+
+[dependency-groups]
+dev = [
+    "ipython>=9.15.0",
+    "pytest>=9.1.1",
+]
